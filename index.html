@@ -230,6 +230,26 @@
       color: #94a3b8;
       border: 1px solid rgba(148, 163, 184, 0.24);
     }
+    /* Continuous multi-day event ribbon bar */
+    .event-bar {
+      height: 15px;
+      margin-top: 3px;
+      padding: 0 3px;
+      font-size: 9px;
+      line-height: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+      width: calc(100% + 6px);
+      margin-left: -3px;
+      margin-right: -3px;
+    }
+    .event-bar.ev-start { border-top-left-radius: 4px; border-bottom-left-radius: 4px; width: calc(100% + 3px); margin-left: 0; }
+    .event-bar.ev-end { border-top-right-radius: 4px; border-bottom-right-radius: 4px; width: calc(100% + 3px); margin-right: 0; }
+    .event-bar.ev-single { border-radius: 4px; width: 100%; margin-left: 0; margin-right: 0; text-align: center; }
     .sheet-backdrop {
       position: fixed;
       inset: 0;
@@ -372,9 +392,10 @@
           <span id="monthly-memo-edit-label" class="text-[11px] text-zinc-600 shrink-0">편집</span>
         </div>
 
-        <!-- Floating Cloud/Shortcut Sync Button (hidden in viewer mode) -->
-        <button id="btn-fab-sync" aria-label="iOS 단축어 알람 동기화" title="iOS 단축어 알람 동기화" class="fixed bottom-[134px] right-4 sm:right-[calc(50%-224px)] z-30 w-12 h-12 rounded-full bg-[#0a84ff] text-white shadow-lg shadow-sky-950/60 flex items-center justify-center active:scale-95 transition-transform">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="12 12 12 17"/><polyline points="9.5 14.5 12 12 14.5 14.5"/></svg>
+        <!-- Floating Manual Backup Button (Google Sheets) -->
+        <button id="btn-fab-sync" aria-label="구글 시트 수동 백업" title="구글 시트 수동 백업" class="fixed bottom-[134px] right-4 sm:right-[calc(50%-224px)] z-30 w-12 h-12 rounded-full bg-[#0a84ff] text-white shadow-lg shadow-sky-950/60 flex items-center justify-center active:scale-95 transition-transform">
+          <svg id="fab-sync-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="12 12 12 17"/><polyline points="9.5 14.5 12 12 14.5 14.5"/></svg>
+          <span id="fab-unsynced-dot" class="hidden absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-amber-400 border-2 border-black"></span>
         </button>
       </section>
 
@@ -559,35 +580,76 @@
         <button id="btn-restore-day" class="mb-1.5 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-[11px] font-semibold text-zinc-300 hover:bg-zinc-800">본근무 복원</button>
       </div>
 
-      <!-- PANEL 1: 메모 탭 (Default when tapping any date) -->
+      <!-- PANEL 1: 일정 · 메모 탭 (Default when tapping any date) -->
       <div id="panel-day-memo" class="space-y-3 h-[310px] overflow-y-auto pr-0.5">
-        <!-- Substitute Note Display Card (subtle muted slate, shown when present) -->
+        <!-- Shared Multi-Day / Single-Day Events (visible in both Owner & Viewer modes) -->
+        <div id="day-event-cards" class="space-y-1.5"></div>
+
+        <!-- Substitute Note Display Card (Owner only) -->
         <div id="memo-tab-sub-card" class="hidden rounded-xl px-3.5 py-2.5 bg-slate-900/70 border border-slate-700/60 flex items-center justify-between gap-2">
           <div class="min-w-0">
-            <div class="text-[10px] text-slate-400 font-medium">대근 · 휴가 대상자</div>
+            <div class="text-[10px] text-slate-400 font-medium">대근자 메모</div>
             <div id="memo-tab-sub-text" class="text-xs font-semibold text-slate-200 mt-0.5 truncate"></div>
           </div>
           <button id="btn-clear-sub-inline" class="text-[11px] text-slate-500 hover:text-rose-400 shrink-0">삭제</button>
         </div>
 
-        <!-- Day Memo Cards List (Large, clear cards) -->
+        <!-- Personal Day Memo Cards List (Owner only) -->
         <div id="day-memo-cards" class="space-y-2"></div>
 
-        <!-- Add New Memo Toggle & Form (Owner only) -->
+        <!-- Add New Memo / New Event Buttons & Forms (Owner only) -->
         <div id="day-memo-add-section" class="pt-1 space-y-2.5">
-          <button id="btn-toggle-new-memo" class="flex items-center gap-2 text-xs font-semibold text-zinc-300 hover:text-white py-1">
-            <span class="w-5 h-5 rounded-full bg-zinc-800 inline-flex items-center justify-center text-sm leading-none">+</span>
-            <span>새 메모 추가</span>
-          </button>
+          <div class="flex items-center gap-4">
+            <button id="btn-toggle-new-memo" class="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 hover:text-white py-1">
+              <span class="w-5 h-5 rounded-full bg-zinc-800 inline-flex items-center justify-center text-sm leading-none">+</span>
+              <span>새 메모</span>
+            </button>
+            <button id="btn-toggle-new-event" class="flex items-center gap-1.5 text-xs font-semibold text-pink-300 hover:text-pink-200 py-1">
+              <span class="w-5 h-5 rounded-full bg-pink-950 border border-pink-800 inline-flex items-center justify-center text-sm leading-none">+</span>
+              <span>기간 일정 등록</span>
+            </button>
+          </div>
 
+          <!-- New Memo Form (AM/PM + Wheel Hour/Min Picker) -->
           <div id="new-memo-form" class="hidden bg-zinc-900/90 border border-zinc-800 rounded-xl p-3 space-y-2.5">
-            <div class="flex items-center justify-between gap-2">
-              <input id="input-memo-time" type="text" maxlength="20" placeholder="시간 (선택 · 예: 오후 6:00)" class="flex-1 bg-black border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="flex items-center gap-1 bg-black border border-zinc-800 rounded-lg p-0.5">
+                <button type="button" data-ampm="none" class="ampm-btn px-2 py-1 rounded-md text-[11px] font-bold bg-zinc-800 text-white">없음</button>
+                <button type="button" data-ampm="오전" class="ampm-btn px-2 py-1 rounded-md text-[11px] font-bold text-zinc-400">오전</button>
+                <button type="button" data-ampm="오후" class="ampm-btn px-2 py-1 rounded-md text-[11px] font-bold text-zinc-400">오후</button>
+              </div>
+              <div id="memo-wheel-wrap" class="hidden flex items-center gap-1">
+                <select id="select-memo-hour" aria-label="시" class="bg-black border border-zinc-700 rounded-lg px-2 py-1 text-xs font-bold text-white"></select>
+                <span class="text-xs text-zinc-400 font-bold">:</span>
+                <select id="select-memo-min" aria-label="분" class="bg-black border border-zinc-700 rounded-lg px-2 py-1 text-xs font-bold text-white"></select>
+              </div>
               <div id="memo-color-picker" class="flex items-center gap-1.5 shrink-0"></div>
             </div>
             <div class="flex gap-2">
-              <input id="input-day-memo" type="text" maxlength="40" placeholder="일정 내용을 입력하세요 (예: 동기 모임)" class="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
+              <input id="input-day-memo" type="text" maxlength="40" placeholder="메모 내용 입력" class="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
               <button id="btn-save-memo" class="px-3.5 py-2 rounded-lg bg-[#0a84ff] text-xs font-bold text-white hover:bg-sky-500 shrink-0">추가</button>
+            </div>
+          </div>
+
+          <!-- New Event (Multi-Day Schedule) Form -->
+          <div id="new-event-form" class="hidden bg-zinc-900/90 border border-pink-900/50 rounded-xl p-3 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-semibold text-pink-300">일정 등록 (공유 화면에도 표시)</span>
+              <div id="event-color-picker" class="flex items-center gap-1.5 shrink-0"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="text-[10px] text-zinc-400 mb-1">시작일</div>
+                <input id="input-event-start" type="date" class="w-full bg-black border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white" />
+              </div>
+              <div>
+                <div class="text-[10px] text-zinc-400 mb-1">종료일</div>
+                <input id="input-event-end" type="date" class="w-full bg-black border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white" />
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <input id="input-event-title" type="text" maxlength="24" placeholder="예: 여자친구 휴가, 가족 여행" class="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500" />
+              <button id="btn-save-event" class="px-3.5 py-2 rounded-lg bg-pink-600 text-xs font-bold text-white hover:bg-pink-500 shrink-0">등록</button>
             </div>
           </div>
         </div>
@@ -632,7 +694,7 @@
         </button>
       </div>
       <p class="text-xs text-zinc-400 leading-relaxed">
-        상대방에게 <span class="text-sky-300 font-semibold">?mode=viewer</span>가 붙은 주소를 공유하면, 수정된 대근·휴가와 메모를 실시간으로 확인하되 편집 및 알람 기능은 모두 숨겨집니다.
+        상대방에게 <span class="text-sky-300 font-semibold">?mode=viewer</span>가 붙은 주소를 공유하면, 내 근무표와 등록된 일정만 실시간으로 확인할 수 있습니다. (대근자·개인 메모·알람은 비공개)
       </p>
       <div class="bg-black border border-zinc-800 rounded-xl p-3 space-y-2">
         <div class="text-[11px] text-zinc-500">읽기 전용 공유 주소</div>
@@ -791,9 +853,12 @@
       myTeam: 3, // Default: 3부
       tHolidayOff: true,
       gasUrl: 'https://script.google.com/macros/s/AKfycbyQFqqiQL7zdx0lgJCwZEmmWSwnixrwVBsFpGnbXJVi6USXAp7al8ynDnXY284v-_-X9A/exec',
+      unsynced: false,
+      lastBackupAt: '',
       overrides: {},
       vacations: {}, // { 'YYYY-MM-DD': '연차' | '공가' | '기타' }
       subNotes: {}, // { 'YYYY-MM-DD': '김OO 대근' }
+      events: [],   // [{ id, title, startDate, endDate, color }]
       dayMemos: {
         '2027-10-17': [{ id: 'm1', time: '오후 12:30', text: '결혼식', color: '#d97706' }]
       },
@@ -819,31 +884,49 @@
           overrides: { ...(parsed.overrides || {}) },
           vacations: { ...(parsed.vacations || {}) },
           subNotes: { ...(parsed.subNotes || {}) },
+          events: Array.isArray(parsed.events) ? parsed.events : [],
           dayMemos: { ...state.dayMemos, ...(parsed.dayMemos || {}) },
           monthlyMemos: { ...(parsed.monthlyMemos || {}) }
         };
       }
     } catch (e) {}
 
+    function updateBackupDot() {
+      const dot = document.getElementById('fab-unsynced-dot');
+      if (dot) dot.classList.toggle('hidden', !state.unsynced || isViewerMode);
+      const badge = document.getElementById('sync-status-badge');
+      if (badge && state.gasUrl) {
+        badge.textContent = state.unsynced ? '미백업 변경 있음' : (state.lastBackupAt ? `백업됨 (${state.lastBackupAt})` : '구글 시트 연결됨');
+      }
+    }
+
     function saveState(skipCloud = false) {
+      if (!skipCloud && !isViewerMode) state.unsynced = true;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
-      if (!skipCloud && !isViewerMode && state.gasUrl && state.gasUrl.startsWith('https://')) {
-        pushToGoogleSheets();
+      updateBackupDot();
+      if (!skipCloud && !isViewerMode && state.gasUrl && state.gasUrl.startsWith('https://') && navigator.onLine !== false) {
+        pushToGoogleSheets(false);
       }
     }
 
     async function pullFromGoogleSheets() {
       if (!state.gasUrl || !state.gasUrl.startsWith('https://')) return;
+      // Protect offline local edits from being overwritten on reload
+      if (state.unsynced && !isViewerMode) {
+        updateBackupDot();
+        return;
+      }
       const badge = document.getElementById('sync-status-badge');
       if (badge) badge.textContent = '동기화 중...';
       try {
-        const res = await fetch(state.gasUrl + '?action=get');
+        const res = await fetch(state.gasUrl + '?action=get', { redirect: 'follow' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         if (data && typeof data === 'object') {
           if (data.overrides) state.overrides = data.overrides;
           if (data.vacations) state.vacations = data.vacations;
           if (data.subNotes) state.subNotes = data.subNotes;
+          if (Array.isArray(data.events)) state.events = data.events;
           if (data.dayMemos) state.dayMemos = data.dayMemos;
           if (data.monthlyMemos) state.monthlyMemos = data.monthlyMemos;
           if (data.alarms) state.alarms = { ...state.alarms, ...data.alarms };
@@ -852,32 +935,65 @@
           if (badge) badge.textContent = '구글 시트 연결됨';
         }
       } catch (e) {
-        if (badge) badge.textContent = '연결 오류 (로컬 모드)';
+        if (badge) badge.textContent = '오프라인 (로컬 모드)';
       }
     }
 
-    async function pushToGoogleSheets() {
-      if (!state.gasUrl || !state.gasUrl.startsWith('https://')) return;
+    let isBackingUp = false;
+    async function pushToGoogleSheets(isManual = false) {
+      if (isBackingUp) return;
+      if (!state.gasUrl || !state.gasUrl.startsWith('https://')) {
+        if (isManual) showToast('패턴 탭에서 구글 시트 URL을 먼저 입력해 주세요');
+        return;
+      }
+      if (navigator.onLine === false) {
+        if (isManual) showToast('오프라인 상태입니다. 연결 후 다시 눌러주세요');
+        return;
+      }
+      isBackingUp = true;
+      const fab = document.getElementById('btn-fab-sync');
+      if (isManual && fab) fab.classList.add('opacity-70', 'animate-pulse');
+      if (isManual) showToast('구글 시트에 백업 중...');
+
+      const payload = JSON.stringify({
+        overrides: state.overrides,
+        vacations: state.vacations,
+        subNotes: state.subNotes,
+        events: state.events,
+        dayMemos: state.dayMemos,
+        monthlyMemos: state.monthlyMemos,
+        alarms: state.alarms
+      });
+
       try {
-        await fetch(state.gasUrl, {
+        const res = await fetch(state.gasUrl, {
           method: 'POST',
-          mode: 'no-cors',
+          redirect: 'follow',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            overrides: state.overrides,
-            vacations: state.vacations,
-            subNotes: state.subNotes,
-            dayMemos: state.dayMemos,
-            monthlyMemos: state.monthlyMemos,
-            alarms: state.alarms
-          })
+          body: payload
         });
-      } catch (e) {}
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const now = new Date();
+        state.unsynced = false;
+        state.lastBackupAt = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+        saveState(true);
+        if (isManual) showToast(`구글 시트 백업 완료 (${state.lastBackupAt})`);
+      } catch (e) {
+        state.unsynced = true;
+        saveState(true);
+        if (isManual) showToast('백업 실패: 오프라인이거나 웹앱 권한을 확인해 주세요');
+      } finally {
+        isBackingUp = false;
+        if (fab) fab.classList.remove('opacity-70', 'animate-pulse');
+      }
     }
 
     let selectedDateStr = null;
     let selectedMemoColor = '#d97706';
+    let selectedEventColor = '#ec4899';
+    let selectedAmPm = 'none';
     let modalDayTab = 'memo'; // 'memo' | 'shift'
+    const EVENT_COLORS = ['#ec4899', '#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b'];
     let jumpYear = state.year;
 
     function getDayMemoList(dateStr) {
@@ -1076,6 +1192,8 @@
     function applyViewerModeUI() {
       document.getElementById('viewer-banner').classList.toggle('hidden', !isViewerMode);
       document.getElementById('btn-fab-sync').classList.toggle('hidden', isViewerMode);
+      document.getElementById('monthly-memo-bar').classList.toggle('hidden', isViewerMode);
+      document.getElementById('btn-open-memo').classList.toggle('hidden', isViewerMode);
       document.getElementById('monthly-memo-edit-label').classList.toggle('hidden', isViewerMode);
 
       const nav = document.getElementById('bottom-nav');
@@ -1114,10 +1232,21 @@
         const holiday = HOLIDAYS[dateStr] || '';
         const { code, isOverride } = getFinalShift(dateStr);
         const meta = getShiftMeta(code);
-        const memoList = getDayMemoList(dateStr);
+        const memoList = isViewerMode ? [] : getDayMemoList(dateStr);
         const firstMemo = memoList[0];
         const extraMemoCount = memoList.length > 1 ? memoList.length - 1 : 0;
-        const subNote = state.subNotes[dateStr] || '';
+        const subNote = isViewerMode ? '' : (state.subNotes[dateStr] || '');
+        const dayEvents = (state.events || []).filter(ev => ev.startDate <= dateStr && dateStr <= ev.endDate);
+        const eventBarsHtml = dayEvents.slice(0, 2).map(ev => {
+          const isStart = (ev.startDate === dateStr);
+          const isEnd = (ev.endDate === dateStr);
+          let cls = 'event-bar';
+          if (isStart && isEnd) cls += ' ev-single';
+          else if (isStart) cls += ' ev-start';
+          else if (isEnd) cls += ' ev-end';
+          const showText = isStart || dow === 0;
+          return `<div class="${cls}" style="background:${ev.color || '#ec4899'}">${showText ? escapeHtml(ev.title) : '&nbsp;'}</div>`;
+        }).join('');
         const viol = checkDayViolations(dateStr);
 
         if (isCurrentMonth && viol.hasViolation) monthViolations++;
@@ -1151,6 +1280,7 @@
               ${viol.hasViolation ? '<span class="warn-badge">!</span>' : ''}
             </div>
           </div>
+          ${eventBarsHtml}
           ${subNote ? `<div class="sub-chip">${escapeHtml(subNote)}</div>` : ''}
           ${firstMemo ? `<div class="memo-chip" style="background:${firstMemo.color || '#d97706'}">${escapeHtml(firstMemo.text)}${extraMemoCount ? ' +' + extraMemoCount : ''}</div>` : ''}
         `;
@@ -1200,13 +1330,54 @@
       tShift.className = `pb-2 text-sm font-bold border-b-2 transition ${!isMemo ? 'text-white border-white' : 'text-zinc-500 border-transparent hover:text-zinc-300'}${isViewerMode ? ' hidden' : ''}`;
     }
 
+    function renderDayEventCards(dateStr) {
+      const wrap = document.getElementById('day-event-cards');
+      wrap.innerHTML = '';
+      const list = (state.events || []).filter(ev => ev.startDate <= dateStr && dateStr <= ev.endDate);
+      if (list.length === 0) {
+        if (isViewerMode) {
+          wrap.innerHTML = `<div class="rounded-xl border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-500">등록된 일정이 없습니다</div>`;
+        }
+        return;
+      }
+      list.forEach(ev => {
+        const card = document.createElement('div');
+        card.className = 'rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2 border';
+        card.style.background = (ev.color || '#ec4899') + '22';
+        card.style.borderColor = (ev.color || '#ec4899') + '88';
+        const rangeStr = ev.startDate === ev.endDate ? ev.startDate.slice(5) : `${ev.startDate.slice(5)} ~ ${ev.endDate.slice(5)}`;
+        card.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${ev.color || '#ec4899'}"></span>
+            <div class="min-w-0">
+              <div class="text-[10px] text-zinc-300 font-medium">일정 · ${rangeStr}</div>
+              <div class="text-xs font-bold text-white truncate">${escapeHtml(ev.title)}</div>
+            </div>
+          </div>
+          ${!isViewerMode ? `<button data-ev-del="${ev.id}" class="text-[11px] text-zinc-400 hover:text-rose-400 shrink-0">삭제</button>` : ''}
+        `;
+        const delBtn = card.querySelector('[data-ev-del]');
+        if (delBtn) {
+          delBtn.addEventListener('click', () => {
+            state.events = (state.events || []).filter(x => x.id !== ev.id);
+            saveState();
+            renderCalendar();
+            renderDayEventCards(dateStr);
+            showToast('일정이 삭제되었습니다');
+          });
+        }
+        wrap.appendChild(card);
+      });
+    }
+
     function renderDayMemoCards(dateStr) {
-      const list = getDayMemoList(dateStr);
       const wrap = document.getElementById('day-memo-cards');
       wrap.innerHTML = '';
-
-      if (list.length === 0) {
-        wrap.innerHTML = `<div class="rounded-xl border border-dashed border-zinc-800 py-7 text-center text-xs text-zinc-500">등록된 일정 메모가 없습니다</div>`;
+      if (isViewerMode) return;
+      const list = getDayMemoList(dateStr);
+      const hasEvents = (state.events || []).some(ev => ev.startDate <= dateStr && dateStr <= ev.endDate);
+      if (list.length === 0 && !hasEvents) {
+        wrap.innerHTML = `<div class="rounded-xl border border-dashed border-zinc-800 py-7 text-center text-xs text-zinc-500">등록된 일정이나 메모가 없습니다</div>`;
         return;
       }
 
@@ -1274,26 +1445,35 @@
         vBox.classList.add('hidden');
       }
 
-      // Substitute note in Memo tab & Shift tab
+      // Tab title: '일정' in viewer mode, '메모' in owner mode
+      document.getElementById('tab-day-memo').textContent = isViewerMode ? '일정' : '메모';
+
+      // Substitute note (Owner only)
       const subNote = state.subNotes[dateStr] || '';
       const subCard = document.getElementById('memo-tab-sub-card');
-      if (subNote) {
+      if (subNote && !isViewerMode) {
         subCard.classList.remove('hidden');
         document.getElementById('memo-tab-sub-text').textContent = subNote;
-        document.getElementById('btn-clear-sub-inline').classList.toggle('hidden', isViewerMode);
+        document.getElementById('btn-clear-sub-inline').classList.remove('hidden');
       } else {
         subCard.classList.add('hidden');
       }
 
-      // Memo cards & add form
+      // Event & Memo cards
+      renderDayEventCards(dateStr);
       renderDayMemoCards(dateStr);
       document.getElementById('day-memo-add-section').classList.toggle('hidden', isViewerMode);
       if (!keepTab) {
         document.getElementById('new-memo-form').classList.add('hidden');
+        document.getElementById('new-event-form').classList.add('hidden');
       }
       document.getElementById('input-day-memo').value = '';
-      document.getElementById('input-memo-time').value = '';
+      document.getElementById('input-event-title').value = '';
+      document.getElementById('input-event-start').value = dateStr;
+      document.getElementById('input-event-end').value = dateStr;
+      setAmPm('none');
       renderMemoColorPicker();
+      renderEventColorPicker();
 
       // Shift tab contents
       document.getElementById('tab-day-shift').classList.toggle('hidden', isViewerMode);
@@ -1377,6 +1557,50 @@
         wrap.appendChild(btn);
       });
     }
+
+    function renderEventColorPicker() {
+      const wrap = document.getElementById('event-color-picker');
+      if (!wrap) return;
+      wrap.innerHTML = '';
+      EVENT_COLORS.forEach(hex => {
+        const btn = document.createElement('button');
+        btn.className = `w-4 h-4 rounded-full transition ${selectedEventColor === hex ? 'ring-2 ring-white scale-110' : 'opacity-60'}`;
+        btn.style.background = hex;
+        btn.addEventListener('click', () => {
+          selectedEventColor = hex;
+          renderEventColorPicker();
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
+    function setAmPm(val) {
+      selectedAmPm = val;
+      document.querySelectorAll('.ampm-btn').forEach(btn => {
+        const active = (btn.dataset.ampm === val);
+        btn.className = `ampm-btn px-2 py-1 rounded-md text-[11px] font-bold transition ${active ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'}`;
+      });
+      document.getElementById('memo-wheel-wrap').classList.toggle('hidden', val === 'none');
+    }
+
+    // Populate hour (1..12) and minute (00..55 step 5) native wheel pickers
+    (function initTimeWheels() {
+      const hSel = document.getElementById('select-memo-hour');
+      const mSel = document.getElementById('select-memo-min');
+      for (let h = 1; h <= 12; h++) {
+        const opt = document.createElement('option');
+        opt.value = String(h);
+        opt.textContent = `${h}시`;
+        if (h === 6) opt.selected = true;
+        hSel.appendChild(opt);
+      }
+      for (let m = 0; m < 60; m += 5) {
+        const opt = document.createElement('option');
+        opt.value = pad2(m);
+        opt.textContent = `${pad2(m)}분`;
+        mSel.appendChild(opt);
+      }
+    })();
 
     function toggleVacation(vacType) {
       if (!selectedDateStr || isViewerMode) return;
@@ -1609,7 +1833,10 @@
     }
 
     function renderLogView() {
-      const dates = new Set([...Object.keys(state.overrides), ...Object.keys(state.vacations), ...Object.keys(state.subNotes), ...Object.keys(state.dayMemos)]);
+      const eventStarts = (state.events || []).map(ev => ev.startDate);
+      const dates = isViewerMode
+        ? new Set([...Object.keys(state.overrides), ...eventStarts])
+        : new Set([...Object.keys(state.overrides), ...Object.keys(state.vacations), ...Object.keys(state.subNotes), ...Object.keys(state.dayMemos), ...eventStarts]);
       const sorted = Array.from(dates).sort().reverse();
       document.getElementById('log-count-badge').textContent = `${sorted.length}건`;
 
@@ -1622,11 +1849,13 @@
 
       sorted.forEach(dateStr => {
         const ov = state.overrides[dateStr];
-        const vac = state.vacations[dateStr] || '';
-        const subNote = state.subNotes[dateStr] || '';
-        const memoList = getDayMemoList(dateStr);
+        const vac = isViewerMode ? '' : (state.vacations[dateStr] || '');
+        const subNote = isViewerMode ? '' : (state.subNotes[dateStr] || '');
+        const memoList = isViewerMode ? [] : getDayMemoList(dateStr);
+        const dayEvs = (state.events || []).filter(ev => ev.startDate === dateStr);
+        const evSummary = dayEvs.map(e => e.title).join(' · ');
         const memoSummary = memoList.map(m => m.text).join(' · ');
-        if (!ov && !vac && !subNote && memoList.length === 0) return;
+        if (!ov && !vac && !subNote && memoList.length === 0 && dayEvs.length === 0) return;
         const base = getBaseShift(dateStr);
         const code = ov || (vac ? 'X' : base);
         const meta = getShiftMeta(code);
@@ -1638,8 +1867,9 @@
             <span class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-extrabold ${meta.badgeClass === 'badge-X' ? 'text-[#e05263] bg-zinc-900' : meta.badgeClass}">${meta.display || code}</span>
             <div class="min-w-0">
               <div class="text-xs font-bold text-white">${dateStr} ${vac ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[10px]">${vac}</span>` : ''} ${ov ? `<span class="text-zinc-400 font-normal">(${base} → ${meta.display || ov})</span>` : ''}</div>
+              ${evSummary ? `<div class="text-[11px] text-pink-400 truncate mt-0.5">일정: ${escapeHtml(evSummary)}</div>` : ''}
               ${subNote ? `<div class="text-[11px] text-slate-400 truncate mt-0.5">대상자: ${escapeHtml(subNote)}</div>` : ''}
-              ${memoSummary ? `<div class="text-[11px] text-amber-400 truncate mt-0.5">${escapeHtml(memoSummary)}</div>` : (!subNote ? `<div class="text-[11px] text-zinc-400 mt-0.5">${meta.label}</div>` : '')}
+              ${memoSummary ? `<div class="text-[11px] text-amber-400 truncate mt-0.5">${escapeHtml(memoSummary)}</div>` : (!subNote && !evSummary ? `<div class="text-[11px] text-zinc-400 mt-0.5">${meta.label}</div>` : '')}
             </div>
           </div>
           <span class="text-[11px] text-sky-400 shrink-0">이동</span>
@@ -1801,7 +2031,7 @@
     });
     document.getElementById('btn-menu').addEventListener('click', () => switchTab('teams'));
     document.getElementById('btn-open-stats').addEventListener('click', openStatsModal);
-    document.getElementById('btn-fab-sync').addEventListener('click', () => switchTab('alarm'));
+    document.getElementById('btn-fab-sync').addEventListener('click', () => pushToGoogleSheets(true));
 
     // Share / Partner Viewer modal
     document.getElementById('btn-open-share').addEventListener('click', () => {
@@ -1941,10 +2171,39 @@
       if (!selectedDateStr) return;
       openDayModal(addDays(selectedDateStr, 1), true);
     });
+    document.querySelectorAll('.ampm-btn').forEach(btn => {
+      btn.addEventListener('click', () => setAmPm(btn.dataset.ampm));
+    });
     document.getElementById('btn-toggle-new-memo').addEventListener('click', () => {
+      document.getElementById('new-event-form').classList.add('hidden');
       const f = document.getElementById('new-memo-form');
       f.classList.toggle('hidden');
       if (!f.classList.contains('hidden')) document.getElementById('input-day-memo').focus();
+    });
+    document.getElementById('btn-toggle-new-event').addEventListener('click', () => {
+      document.getElementById('new-memo-form').classList.add('hidden');
+      const f = document.getElementById('new-event-form');
+      f.classList.toggle('hidden');
+      if (!f.classList.contains('hidden')) document.getElementById('input-event-title').focus();
+    });
+    document.getElementById('btn-save-event').addEventListener('click', () => {
+      if (isViewerMode) return;
+      const title = document.getElementById('input-event-title').value.trim();
+      const startDate = document.getElementById('input-event-start').value;
+      const endDate = document.getElementById('input-event-end').value || startDate;
+      if (!title) return showToast('일정 제목을 입력해 주세요');
+      if (!startDate) return showToast('시작일을 선택해 주세요');
+      const sDate = startDate <= endDate ? startDate : endDate;
+      const eDate = startDate <= endDate ? endDate : startDate;
+      state.events = state.events || [];
+      state.events.push({ id: 'ev_' + Date.now(), title, startDate: sDate, endDate: eDate, color: selectedEventColor });
+      saveState();
+      renderCalendar();
+      document.getElementById('input-event-title').value = '';
+      document.getElementById('new-event-form').classList.add('hidden');
+      renderDayEventCards(selectedDateStr);
+      renderDayMemoCards(selectedDateStr);
+      showToast('기간 일정이 등록되었습니다');
     });
     document.getElementById('btn-clear-sub-inline').addEventListener('click', () => {
       if (!selectedDateStr || isViewerMode) return;
@@ -1985,18 +2244,23 @@
     document.getElementById('btn-save-memo').addEventListener('click', () => {
       if (!selectedDateStr || isViewerMode) return;
       const txt = document.getElementById('input-day-memo').value.trim();
-      const timeStr = document.getElementById('input-memo-time').value.trim();
       if (!txt) return showToast('메모 내용을 입력해 주세요');
+      let timeStr = '';
+      if (selectedAmPm !== 'none') {
+        const h = document.getElementById('select-memo-hour').value;
+        const m = document.getElementById('select-memo-min').value;
+        timeStr = `${selectedAmPm} ${h}:${m}`;
+      }
       const list = getDayMemoList(selectedDateStr);
       list.push({ id: String(Date.now()), time: timeStr, text: txt, color: selectedMemoColor });
       state.dayMemos[selectedDateStr] = list;
       saveState();
       renderCalendar();
       document.getElementById('input-day-memo').value = '';
-      document.getElementById('input-memo-time').value = '';
+      setAmPm('none');
       document.getElementById('new-memo-form').classList.add('hidden');
       renderDayMemoCards(selectedDateStr);
-      showToast('일정 메모가 추가되었습니다');
+      showToast('메모가 추가되었습니다');
     });
 
     // Monthly memo modal
@@ -2049,7 +2313,7 @@
     });
     document.getElementById('team-compare-date').addEventListener('change', renderTeamsView);
     document.getElementById('btn-export-json').addEventListener('click', () => {
-      copyText(JSON.stringify({ overrides: state.overrides, vacations: state.vacations, subNotes: state.subNotes, dayMemos: state.dayMemos, alarms: state.alarms }, null, 2), '백업 JSON이 복사되었습니다');
+      copyText(JSON.stringify({ overrides: state.overrides, vacations: state.vacations, subNotes: state.subNotes, events: state.events, dayMemos: state.dayMemos, alarms: state.alarms }, null, 2), '백업 JSON이 복사되었습니다');
     });
     document.getElementById('btn-reset-overrides').addEventListener('click', () => {
       state.overrides = {};
@@ -2109,6 +2373,7 @@
 
     // Initial render & optional cloud pull
     applyViewerModeUI();
+    updateBackupDot();
     if (state.gasUrl) pullFromGoogleSheets();
   </script>
 </body>
