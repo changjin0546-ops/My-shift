@@ -28,10 +28,33 @@
       border-left: 1px solid #141416;
       border-right: 1px solid #141416;
     }
+    .cal-viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      touch-action: pan-y;
+    }
     .cal-grid {
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
       flex: 1;
+      will-change: transform, opacity;
+    }
+    @keyframes slideInFromRight {
+      0% { transform: translateX(36px); opacity: 0.15; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideInFromLeft {
+      0% { transform: translateX(-36px); opacity: 0.15; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    .cal-anim-next {
+      animation: slideInFromRight 240ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .cal-anim-prev {
+      animation: slideInFromLeft 240ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
     .cal-cell {
       border-top: 1px solid #18181b;
@@ -224,18 +247,33 @@
       background: #141416;
       border-top: 1px solid #27272a;
       border-radius: 20px 20px 0 0;
-      padding: 16px 18px 26px;
+      padding: 16px 18px max(34px, calc(env(safe-area-inset-bottom) + 18px));
       max-height: 88dvh;
       overflow-y: auto;
+      overflow-x: hidden;
       animation: slideUp 0.18s ease-out;
     }
+    .bottom-nav-bar {
+      padding-top: 8px;
+      padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 12px));
+    }
+    @keyframes tabSlideInRight {
+      0% { transform: translateX(22px); opacity: 0.25; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes tabSlideInLeft {
+      0% { transform: translateX(-22px); opacity: 0.25; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    .tab-anim-right { animation: tabSlideInRight 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+    .tab-anim-left { animation: tabSlideInLeft 180ms cubic-bezier(0.22, 1, 0.36, 1); }
     @keyframes slideUp {
       from { transform: translateY(24px); opacity: 0.7; }
       to { transform: translateY(0); opacity: 1; }
     }
     .toast {
       position: fixed;
-      bottom: 78px;
+      bottom: 98px;
       left: 50%;
       transform: translateX(-50%) translateY(12px);
       background: #27272a;
@@ -300,7 +338,7 @@
     </header>
 
     <!-- Main View Container -->
-    <main class="flex-1 flex flex-col pb-[62px]">
+    <main class="flex-1 flex flex-col pb-[86px]">
       <!-- VIEW 1: Calendar -->
       <section id="view-calendar" class="flex-1 flex flex-col">
         <!-- Fatigue Rule Violation Alert Bar (shown only when violation exists in visible month) -->
@@ -321,7 +359,9 @@
         </div>
 
         <!-- Calendar Days Grid -->
-        <div id="calendar-grid" class="cal-grid"></div>
+        <div class="cal-viewport">
+          <div id="calendar-grid" class="cal-grid"></div>
+        </div>
 
         <!-- Monthly Memo Bar (clean, ad-free) -->
         <div id="monthly-memo-bar" class="px-3.5 py-2.5 border-t border-zinc-900 bg-black flex items-center justify-between gap-2 cursor-pointer hover:bg-zinc-950">
@@ -333,7 +373,7 @@
         </div>
 
         <!-- Floating Cloud/Shortcut Sync Button (hidden in viewer mode) -->
-        <button id="btn-fab-sync" aria-label="iOS 단축어 알람 동기화" title="iOS 단축어 알람 동기화" class="fixed bottom-[110px] right-4 sm:right-[calc(50%-224px)] z-30 w-12 h-12 rounded-full bg-[#0a84ff] text-white shadow-lg shadow-sky-950/60 flex items-center justify-center active:scale-95 transition-transform">
+        <button id="btn-fab-sync" aria-label="iOS 단축어 알람 동기화" title="iOS 단축어 알람 동기화" class="fixed bottom-[134px] right-4 sm:right-[calc(50%-224px)] z-30 w-12 h-12 rounded-full bg-[#0a84ff] text-white shadow-lg shadow-sky-950/60 flex items-center justify-center active:scale-95 transition-transform">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="12 12 12 17"/><polyline points="9.5 14.5 12 12 14.5 14.5"/></svg>
         </button>
       </section>
@@ -449,7 +489,7 @@
     </main>
 
     <!-- Bottom Navigation Bar -->
-    <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] h-[58px] bg-black/95 backdrop-blur border-t border-zinc-900 grid grid-cols-5 z-30">
+    <nav id="bottom-nav" class="bottom-nav-bar fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-black/95 backdrop-blur border-t border-zinc-900 grid grid-cols-5 z-30">
       <button data-tab="calendar" class="nav-btn flex flex-col items-center justify-center gap-0.5 text-[#0a84ff]">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span class="text-[10px] font-medium">캘린더</span>
@@ -473,108 +513,111 @@
     </nav>
   </div>
 
-  <!-- Day Edit / View Bottom Sheet -->
+  <!-- Day Detail Bottom Sheet (메모 탭 / 근무 탭 분리) -->
   <div id="modal-day" class="sheet-backdrop">
-    <div class="sheet-panel space-y-4">
-      <div class="flex items-start justify-between">
-        <div>
-          <div class="flex items-center gap-2">
-            <h3 id="modal-day-title" class="text-base font-bold text-white">2026년 11월 21일 (토)</h3>
-            <span id="modal-day-holiday" class="text-xs font-semibold text-[#e05263]"></span>
+    <div class="sheet-panel space-y-3.5">
+      <!-- Drag Handle -->
+      <div class="w-10 h-1 rounded-full bg-zinc-700 mx-auto -mt-1"></div>
+
+      <!-- Top Date & Shift Summary Header -->
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <button id="btn-modal-prev-day" aria-label="이전 날짜" class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 id="modal-day-title" class="text-lg font-extrabold text-white tracking-tight">11월 21일 토요일</h3>
+              <span id="modal-day-holiday" class="text-xs font-semibold text-[#e05263]"></span>
+            </div>
+            <div class="flex items-center gap-2 mt-1.5">
+              <span id="modal-day-badge" class="w-7 h-7 rounded-full inline-flex items-center justify-center text-xs font-extrabold badge-N">N</span>
+              <div class="text-xs text-zinc-300 font-medium" id="modal-day-time">00:00 ~ 08:00</div>
+              <span id="modal-day-vac-pill" class="hidden text-[11px] px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-600/70 text-emerald-300 font-bold">연차</span>
+            </div>
           </div>
-          <p id="modal-day-base" class="text-xs text-zinc-400 mt-0.5">기본 패턴: N (00:00~08:00)</p>
         </div>
-        <button id="btn-close-day" class="p-1 text-zinc-400 hover:text-white">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+        <div class="flex items-center gap-1 shrink-0">
+          <button id="btn-modal-next-day" aria-label="다음 날짜" class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button id="btn-close-day" aria-label="닫기" class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Fatigue Violation Warning Box -->
       <div id="modal-day-violation" class="hidden bg-red-950/90 border border-red-600/80 rounded-xl px-3.5 py-2.5 text-xs text-red-200 space-y-1"></div>
 
-      <!-- Read-only summary box (shown in viewer mode) -->
-      <div id="modal-day-readonly-box" class="hidden bg-black/80 border border-zinc-800 rounded-xl p-3.5 space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-zinc-400">확정 근무</span>
-          <span id="readonly-shift-label" class="text-sm font-bold text-white">D (08:00 ~ 16:00)</span>
+      <!-- Modal Sub-Tabs: 메모 (default) | 근무 -->
+      <div class="flex items-center justify-between border-b border-zinc-800 pt-0.5">
+        <div class="flex items-center gap-5">
+          <button id="tab-day-memo" class="pb-2 text-sm font-bold text-white border-b-2 border-white transition">메모</button>
+          <button id="tab-day-shift" class="pb-2 text-sm font-bold text-zinc-500 border-b-2 border-transparent hover:text-zinc-300 transition">근무</button>
         </div>
-        <div id="readonly-sub-row" class="hidden flex items-center justify-between pt-2 border-t border-zinc-800">
-          <span class="text-xs text-zinc-400">대근·휴가 대상자</span>
-          <span id="readonly-sub-text" class="text-xs font-medium text-slate-300"></span>
+        <button id="btn-restore-day" class="mb-1.5 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-[11px] font-semibold text-zinc-300 hover:bg-zinc-800">본근무 복원</button>
+      </div>
+
+      <!-- PANEL 1: 메모 탭 (Default when tapping any date) -->
+      <div id="panel-day-memo" class="space-y-3 h-[310px] overflow-y-auto pr-0.5">
+        <!-- Substitute Note Display Card (subtle muted slate, shown when present) -->
+        <div id="memo-tab-sub-card" class="hidden rounded-xl px-3.5 py-2.5 bg-slate-900/70 border border-slate-700/60 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-[10px] text-slate-400 font-medium">대근 · 휴가 대상자</div>
+            <div id="memo-tab-sub-text" class="text-xs font-semibold text-slate-200 mt-0.5 truncate"></div>
+          </div>
+          <button id="btn-clear-sub-inline" class="text-[11px] text-slate-500 hover:text-rose-400 shrink-0">삭제</button>
         </div>
-        <div id="readonly-memo-row" class="hidden flex items-center justify-between pt-2 border-t border-zinc-800">
-          <span class="text-xs text-zinc-400">일정 메모</span>
-          <span id="readonly-memo-text" class="text-xs font-semibold text-amber-400"></span>
+
+        <!-- Day Memo Cards List (Large, clear cards) -->
+        <div id="day-memo-cards" class="space-y-2"></div>
+
+        <!-- Add New Memo Toggle & Form (Owner only) -->
+        <div id="day-memo-add-section" class="pt-1 space-y-2.5">
+          <button id="btn-toggle-new-memo" class="flex items-center gap-2 text-xs font-semibold text-zinc-300 hover:text-white py-1">
+            <span class="w-5 h-5 rounded-full bg-zinc-800 inline-flex items-center justify-center text-sm leading-none">+</span>
+            <span>새 메모 추가</span>
+          </button>
+
+          <div id="new-memo-form" class="hidden bg-zinc-900/90 border border-zinc-800 rounded-xl p-3 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <input id="input-memo-time" type="text" maxlength="20" placeholder="시간 (선택 · 예: 오후 6:00)" class="flex-1 bg-black border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
+              <div id="memo-color-picker" class="flex items-center gap-1.5 shrink-0"></div>
+            </div>
+            <div class="flex gap-2">
+              <input id="input-day-memo" type="text" maxlength="40" placeholder="일정 내용을 입력하세요 (예: 동기 모임)" class="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
+              <button id="btn-save-memo" class="px-3.5 py-2 rounded-lg bg-[#0a84ff] text-xs font-bold text-white hover:bg-sky-500 shrink-0">추가</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Owner Edit Controls (hidden in viewer mode) -->
-      <div id="modal-day-edit-controls" class="space-y-4">
-        <!-- Alarm preview for selected day -->
-        <div id="modal-day-alarm-box" class="bg-black/80 border border-zinc-800 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-sky-400 text-sm">⏰</span>
-            <div>
-              <div class="text-[11px] text-zinc-400">적용될 기상 알람</div>
-              <div id="modal-day-alarm-text" class="text-xs font-bold text-white">06:30 (DAY 알람 ON)</div>
-            </div>
-          </div>
-          <span id="modal-day-hours" class="text-xs font-semibold text-zinc-300">8시간</span>
-        </div>
-
-        <!-- Basic Shifts -->
+      <!-- PANEL 2: 근무 탭 (간결한 3섹션: 근무변경 / 휴가 / 대근자 메모) -->
+      <div id="panel-day-shift" class="hidden space-y-4 h-[310px] overflow-y-auto pr-0.5">
         <div>
-          <div class="text-[11px] font-semibold text-zinc-400 mb-2">기본 근무 변경</div>
+          <div class="text-xs font-semibold text-zinc-400 mb-2">근무변경</div>
           <div id="picker-basic" class="grid grid-cols-7 gap-1.5"></div>
+          <div id="picker-double" class="grid grid-cols-7 gap-1.5 mt-1.5"></div>
         </div>
 
-        <!-- Double Shifts (대근 - ND 금지 반영) -->
         <div>
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-[11px] font-semibold text-zinc-400">대근 (ND 00~16시 금지)</span>
-            <span class="text-[10px] text-purple-300">AN 선택 시 다음날 →N 자동 연결</span>
-          </div>
-          <div id="picker-double" class="grid grid-cols-2 gap-2"></div>
+          <div class="text-xs font-semibold text-zinc-400 mb-2">휴가</div>
+          <div id="picker-vac" class="grid grid-cols-3 gap-2"></div>
         </div>
 
-        <!-- Vacation (휴가) & Custom -->
-        <div>
-          <div class="text-[11px] font-semibold text-zinc-400 mb-2">휴가 · 직접 입력</div>
-          <div class="flex items-center gap-2">
-            <div id="picker-vac" class="flex gap-2"></div>
-            <input id="input-custom-code" maxlength="3" placeholder="직접입력" class="flex-1 min-w-0 bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-white placeholder-zinc-500 uppercase focus:outline-none focus:border-sky-500" />
-            <button id="btn-apply-custom" class="px-3 py-2 rounded-lg bg-zinc-800 text-xs font-semibold text-white hover:bg-zinc-700 shrink-0">적용</button>
-          </div>
-        </div>
-
-        <!-- Substitute / Cover Person Note (muted slate color, separate from general memo) -->
-        <div class="space-y-1.5 pt-1 border-t border-zinc-800/80">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold text-slate-400">대근 · 휴가 대상자 메모 (은은한 회색 표기)</span>
-          </div>
+        <div class="space-y-2 pt-1 border-t border-zinc-800/80">
+          <div class="text-xs font-semibold text-zinc-400">대근자 메모</div>
           <div class="flex gap-2">
-            <input id="input-sub-note" type="text" maxlength="16" placeholder="예: 김OO 대근 / 이OO 대리" class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-zinc-500 focus:outline-none focus:border-slate-400" />
+            <input id="input-sub-note" type="text" maxlength="16" placeholder="이름 입력" class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-zinc-500 focus:outline-none focus:border-slate-400" />
             <button id="btn-save-sub-note" class="px-3.5 py-2 rounded-lg bg-slate-700 text-xs font-bold text-white hover:bg-slate-600 shrink-0">저장</button>
           </div>
         </div>
-
-        <!-- Daily Memo -->
-        <div class="space-y-2 pt-1 border-t border-zinc-800/80">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold text-zinc-400">일정 메모 (달력 하단 표시)</span>
-            <div id="memo-color-picker" class="flex items-center gap-1.5"></div>
-          </div>
-          <div class="flex gap-2">
-            <input id="input-day-memo" type="text" maxlength="20" placeholder="예: 결혼식 12시, 김대리 대근" class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
-            <button id="btn-save-memo" class="px-3.5 py-2 rounded-lg bg-[#0a84ff] text-xs font-bold text-white hover:bg-sky-500 shrink-0">저장</button>
-          </div>
-        </div>
       </div>
 
-      <!-- Footer Actions -->
-      <div class="flex gap-2 pt-1">
-        <button id="btn-restore-day" class="flex-1 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-semibold text-zinc-300 hover:bg-zinc-800">원래 패턴으로 복원</button>
-        <button id="btn-done-day" class="flex-1 py-2.5 rounded-xl bg-white text-black text-xs font-bold hover:bg-zinc-200">닫기</button>
+      <!-- Footer Close -->
+      <div class="pt-1">
+        <button id="btn-done-day" class="w-full py-2.5 rounded-xl bg-zinc-800 text-zinc-100 text-xs font-bold hover:bg-zinc-700">닫기</button>
       </div>
     </div>
   </div>
@@ -723,9 +766,6 @@
       DA:   { display: 'DA',  label: '대근 (D+A)',           time: '08:00 ~ 24:00 (16h)', hours: 16, intervals: [[8,24]],           alarmKey: 'D',   badgeClass: 'badge-double' },
       AN:   { display: 'A→',  label: '대근 (A→N 연속 시작)', time: '16:00 ~ 익일 08:00',   hours: 8,  intervals: [[16,24]],          alarmKey: 'A',   badgeClass: 'badge-an-start', isAnStart: true },
       AN_C: { display: '→N',  label: '대근 (A→N 연속 종료)', time: '전일 16:00 ~ 08:00',  hours: 8,  intervals: [[0,8]],            alarmKey: null,  badgeClass: 'badge-an-cont',  isAnCont: true },
-      연차: { display: '연차', label: '연차 휴가',           time: '휴가 (알람 OFF)',     hours: 0,  intervals: [],                 alarmKey: null,  badgeClass: 'badge-vac' },
-      반차: { display: '반차', label: '반차 휴가',           time: '08:00 ~ 12:00 (4h)',  hours: 4,  intervals: [[8,12]],           alarmKey: 'D',   badgeClass: 'badge-vac' },
-      휴가: { display: '휴가', label: '휴가',                time: '휴가 (알람 OFF)',     hours: 0,  intervals: [],                 alarmKey: null,  badgeClass: 'badge-vac' }
     };
 
     const MEMO_COLORS = [
@@ -750,11 +790,12 @@
       anchorDate: '2027-10-24',
       myTeam: 3, // Default: 3부
       tHolidayOff: true,
-      gasUrl: 'https://script.google.com/macros/s/AKfycbyQFqqiQL7zdx0lgJCwZEmmWSwnixrwVBsFpGnbXJVi6USXAp7al8ynDnXY284v-_-X9A/exec', // Google Apps Script Web App URL (optional)
+      gasUrl: 'https://script.google.com/macros/s/AKfycbyQFqqiQL7zdx0lgJCwZEmmWSwnixrwVBsFpGnbXJVi6USXAp7al8ynDnXY284v-_-X9A/exec',
       overrides: {},
+      vacations: {}, // { 'YYYY-MM-DD': '연차' | '공가' | '기타' }
       subNotes: {}, // { 'YYYY-MM-DD': '김OO 대근' }
       dayMemos: {
-        '2027-10-17': { text: '결혼식 12시3', color: '#d97706' }
+        '2027-10-17': [{ id: 'm1', time: '오후 12:30', text: '결혼식', color: '#d97706' }]
       },
       monthlyMemos: {},
       alarms: {
@@ -773,8 +814,10 @@
         state = {
           ...state,
           ...parsed,
+          gasUrl: parsed.gasUrl || 'https://script.google.com/macros/s/AKfycbyQFqqiQL7zdx0lgJCwZEmmWSwnixrwVBsFpGnbXJVi6USXAp7al8ynDnXY284v-_-X9A/exec',
           alarms: { ...state.alarms, ...(parsed.alarms || {}) },
           overrides: { ...(parsed.overrides || {}) },
+          vacations: { ...(parsed.vacations || {}) },
           subNotes: { ...(parsed.subNotes || {}) },
           dayMemos: { ...state.dayMemos, ...(parsed.dayMemos || {}) },
           monthlyMemos: { ...(parsed.monthlyMemos || {}) }
@@ -799,6 +842,7 @@
         const data = await res.json();
         if (data && typeof data === 'object') {
           if (data.overrides) state.overrides = data.overrides;
+          if (data.vacations) state.vacations = data.vacations;
           if (data.subNotes) state.subNotes = data.subNotes;
           if (data.dayMemos) state.dayMemos = data.dayMemos;
           if (data.monthlyMemos) state.monthlyMemos = data.monthlyMemos;
@@ -821,6 +865,7 @@
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             overrides: state.overrides,
+            vacations: state.vacations,
             subNotes: state.subNotes,
             dayMemos: state.dayMemos,
             monthlyMemos: state.monthlyMemos,
@@ -832,7 +877,16 @@
 
     let selectedDateStr = null;
     let selectedMemoColor = '#d97706';
+    let modalDayTab = 'memo'; // 'memo' | 'shift'
     let jumpYear = state.year;
+
+    function getDayMemoList(dateStr) {
+      const raw = state.dayMemos[dateStr];
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+      if (raw.text) return [{ id: 'legacy', time: '', text: raw.text, color: raw.color || '#d97706' }];
+      return [];
+    }
 
     // =========================================================================
     // 3. Date, Cycle & Fatigue Rule Engine
@@ -878,11 +932,15 @@
     }
 
     function getFinalShift(dateStr) {
-      if (state.overrides[dateStr]) {
-        return { code: state.overrides[dateStr], isOverride: true, base: getBaseShift(dateStr) };
-      }
       const base = getBaseShift(dateStr);
-      return { code: base, isOverride: false, base };
+      const vac = state.vacations[dateStr] || null;
+      if (state.overrides[dateStr]) {
+        return { code: state.overrides[dateStr], isOverride: true, base, vacation: vac };
+      }
+      if (vac) {
+        return { code: 'X', isOverride: true, base, vacation: vac };
+      }
+      return { code: base, isOverride: false, base, vacation: null };
     }
 
     function getShiftMeta(code) {
@@ -1022,7 +1080,7 @@
 
       const nav = document.getElementById('bottom-nav');
       nav.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', isViewerMode));
-      nav.className = `fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] h-[58px] bg-black/95 backdrop-blur border-t border-zinc-900 grid ${isViewerMode ? 'grid-cols-3' : 'grid-cols-5'} z-30`;
+      nav.className = `bottom-nav-bar fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-black/95 backdrop-blur border-t border-zinc-900 grid ${isViewerMode ? 'grid-cols-3' : 'grid-cols-5'} z-30`;
 
       if (isViewerMode && (state.activeTab === 'settings' || state.activeTab === 'alarm')) {
         switchTab('calendar');
@@ -1056,7 +1114,9 @@
         const holiday = HOLIDAYS[dateStr] || '';
         const { code, isOverride } = getFinalShift(dateStr);
         const meta = getShiftMeta(code);
-        const memo = state.dayMemos[dateStr];
+        const memoList = getDayMemoList(dateStr);
+        const firstMemo = memoList[0];
+        const extraMemoCount = memoList.length > 1 ? memoList.length - 1 : 0;
         const subNote = state.subNotes[dateStr] || '';
         const viol = checkDayViolations(dateStr);
 
@@ -1092,7 +1152,7 @@
             </div>
           </div>
           ${subNote ? `<div class="sub-chip">${escapeHtml(subNote)}</div>` : ''}
-          ${memo && memo.text ? `<div class="memo-chip" style="background:${memo.color || '#d97706'}">${escapeHtml(memo.text)}</div>` : ''}
+          ${firstMemo ? `<div class="memo-chip" style="background:${firstMemo.color || '#d97706'}">${escapeHtml(firstMemo.text)}${extraMemoCount ? ' +' + extraMemoCount : ''}</div>` : ''}
         `;
         cell.addEventListener('click', () => openDayModal(dateStr));
         grid.appendChild(cell);
@@ -1115,25 +1175,96 @@
     }
 
     // =========================================================================
-    // 6. Day Edit / View Bottom Sheet
+    // 6. Day Detail Bottom Sheet (메모 탭 기본 / 근무 탭 분리)
     // =========================================================================
-    function openDayModal(dateStr) {
+    function switchDayModalTab(tab, animate = false) {
+      if (isViewerMode && tab === 'shift') return;
+      const changed = (modalDayTab !== tab);
+      modalDayTab = tab;
+      const isMemo = (tab === 'memo');
+      const pMemo = document.getElementById('panel-day-memo');
+      const pShift = document.getElementById('panel-day-shift');
+      pMemo.classList.remove('tab-anim-left', 'tab-anim-right');
+      pShift.classList.remove('tab-anim-left', 'tab-anim-right');
+      pMemo.classList.toggle('hidden', !isMemo);
+      pShift.classList.toggle('hidden', isMemo);
+      if (animate && changed) {
+        const target = isMemo ? pMemo : pShift;
+        void target.offsetWidth;
+        target.classList.add(isMemo ? 'tab-anim-left' : 'tab-anim-right');
+      }
+
+      const tMemo = document.getElementById('tab-day-memo');
+      const tShift = document.getElementById('tab-day-shift');
+      tMemo.className = `pb-2 text-sm font-bold border-b-2 transition ${isMemo ? 'text-white border-white' : 'text-zinc-500 border-transparent hover:text-zinc-300'}`;
+      tShift.className = `pb-2 text-sm font-bold border-b-2 transition ${!isMemo ? 'text-white border-white' : 'text-zinc-500 border-transparent hover:text-zinc-300'}${isViewerMode ? ' hidden' : ''}`;
+    }
+
+    function renderDayMemoCards(dateStr) {
+      const list = getDayMemoList(dateStr);
+      const wrap = document.getElementById('day-memo-cards');
+      wrap.innerHTML = '';
+
+      if (list.length === 0) {
+        wrap.innerHTML = `<div class="rounded-xl border border-dashed border-zinc-800 py-7 text-center text-xs text-zinc-500">등록된 일정 메모가 없습니다</div>`;
+        return;
+      }
+
+      list.forEach((m, idx) => {
+        const card = document.createElement('div');
+        card.className = 'rounded-xl px-4 py-3 flex items-center justify-between gap-3 shadow-sm';
+        card.style.background = m.color || '#d97706';
+        card.innerHTML = `
+          <div class="min-w-0 flex-1">
+            ${m.time ? `<div class="text-[11px] text-white/80 font-medium">${escapeHtml(m.time)}</div>` : ''}
+            <div class="text-sm font-bold text-white leading-snug break-words ${m.time ? 'mt-0.5' : ''}">${escapeHtml(m.text)}</div>
+          </div>
+          ${!isViewerMode ? `<button data-del-idx="${idx}" aria-label="메모 삭제" class="p-1.5 rounded-lg bg-black/20 text-white/90 hover:bg-black/35 text-xs font-bold shrink-0">삭제</button>` : ''}
+        `;
+        const delBtn = card.querySelector('[data-del-idx]');
+        if (delBtn) {
+          delBtn.addEventListener('click', () => {
+            const cur = getDayMemoList(dateStr);
+            cur.splice(idx, 1);
+            if (cur.length > 0) state.dayMemos[dateStr] = cur;
+            else delete state.dayMemos[dateStr];
+            saveState();
+            renderCalendar();
+            renderDayMemoCards(dateStr);
+            showToast('메모가 삭제되었습니다');
+          });
+        }
+        wrap.appendChild(card);
+      });
+    }
+
+    function openDayModal(dateStr, keepTab = false) {
       selectedDateStr = dateStr;
       const [y, m, d] = dateStr.split('-').map(Number);
-      const dowNames = ['일','월','화','수','목','금','토'];
+      const dowFull = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
       const dow = new Date(y, m - 1, d).getDay();
       const holiday = HOLIDAYS[dateStr] || '';
-      const { code, isOverride, base } = getFinalShift(dateStr);
+      const { code, isOverride, base, vacation } = getFinalShift(dateStr);
       const meta = getShiftMeta(code);
-      const baseMeta = getShiftMeta(base);
       const viol = checkDayViolations(dateStr);
 
-      document.getElementById('modal-day-title').textContent = `${y}년 ${m}월 ${d}일 (${dowNames[dow]})`;
+      document.getElementById('modal-day-title').textContent = `${m}월 ${d}일 ${dowFull[dow]}`;
       document.getElementById('modal-day-holiday').textContent = holiday;
-      document.getElementById('modal-day-base').textContent =
-        `${state.myTeam}부 기본 패턴: ${base} (${baseMeta.time})${isOverride ? ` · 변경됨 → ${meta.display}` : ''}`;
 
-      // Violation alert inside modal
+      const badgeEl = document.getElementById('modal-day-badge');
+      badgeEl.className = `w-7 h-7 rounded-full inline-flex items-center justify-center text-xs font-extrabold ${meta.badgeClass === 'badge-X' ? 'text-[#e05263] text-sm bg-zinc-900' : meta.badgeClass}`;
+      badgeEl.textContent = meta.display || code;
+
+      document.getElementById('modal-day-time').textContent = meta.time;
+      const vacPill = document.getElementById('modal-day-vac-pill');
+      if (vacation) {
+        vacPill.textContent = `휴가 · ${vacation}`;
+        vacPill.classList.remove('hidden');
+      } else {
+        vacPill.classList.add('hidden');
+      }
+
+      // Violation alert
       const vBox = document.getElementById('modal-day-violation');
       if (viol.hasViolation) {
         vBox.classList.remove('hidden');
@@ -1143,65 +1274,57 @@
         vBox.classList.add('hidden');
       }
 
-      const memo = state.dayMemos[dateStr] || { text: '', color: '#d97706' };
+      // Substitute note in Memo tab & Shift tab
       const subNote = state.subNotes[dateStr] || '';
-
-      if (isViewerMode) {
-        document.getElementById('modal-day-readonly-box').classList.remove('hidden');
-        document.getElementById('modal-day-edit-controls').classList.add('hidden');
-        document.getElementById('btn-restore-day').classList.add('hidden');
-        document.getElementById('readonly-shift-label').textContent = `${meta.label} (${meta.time})`;
-        if (subNote) {
-          document.getElementById('readonly-sub-row').classList.remove('hidden');
-          document.getElementById('readonly-sub-text').textContent = subNote;
-        } else {
-          document.getElementById('readonly-sub-row').classList.add('hidden');
-        }
-        if (memo.text) {
-          document.getElementById('readonly-memo-row').classList.remove('hidden');
-          document.getElementById('readonly-memo-text').textContent = memo.text;
-        } else {
-          document.getElementById('readonly-memo-row').classList.add('hidden');
-        }
+      const subCard = document.getElementById('memo-tab-sub-card');
+      if (subNote) {
+        subCard.classList.remove('hidden');
+        document.getElementById('memo-tab-sub-text').textContent = subNote;
+        document.getElementById('btn-clear-sub-inline').classList.toggle('hidden', isViewerMode);
       } else {
-        document.getElementById('modal-day-readonly-box').classList.add('hidden');
-        document.getElementById('modal-day-edit-controls').classList.remove('hidden');
-        document.getElementById('btn-restore-day').classList.remove('hidden');
-
-        updateDayModalAlarmPreview(code);
-        renderDayPickers(code);
-
-        selectedMemoColor = memo.color || '#d97706';
-        document.getElementById('input-sub-note').value = subNote;
-        document.getElementById('input-day-memo').value = memo.text || '';
-        document.getElementById('input-custom-code').value = '';
-        renderMemoColorPicker();
-
-        const restoreBtn = document.getElementById('btn-restore-day');
-        restoreBtn.disabled = !isOverride;
-        restoreBtn.className = isOverride
-          ? 'flex-1 py-2.5 rounded-xl bg-zinc-900 border border-rose-500/60 text-xs font-semibold text-rose-300 hover:bg-zinc-800'
-          : 'flex-1 py-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs font-semibold text-zinc-600 cursor-not-allowed';
+        subCard.classList.add('hidden');
       }
 
-      document.getElementById('modal-day').classList.add('open');
+      // Memo cards & add form
+      renderDayMemoCards(dateStr);
+      document.getElementById('day-memo-add-section').classList.toggle('hidden', isViewerMode);
+      if (!keepTab) {
+        document.getElementById('new-memo-form').classList.add('hidden');
+      }
+      document.getElementById('input-day-memo').value = '';
+      document.getElementById('input-memo-time').value = '';
+      renderMemoColorPicker();
+
+      // Shift tab contents
+      document.getElementById('tab-day-shift').classList.toggle('hidden', isViewerMode);
+      const restoreBtn = document.getElementById('btn-restore-day');
+      if (isViewerMode || !isOverride) {
+        restoreBtn.classList.add('hidden');
+      } else {
+        restoreBtn.classList.remove('hidden');
+      }
+
+      if (!isViewerMode) {
+        renderDayPickers(code, vacation);
+        document.getElementById('input-sub-note').value = subNote;
+      }
+
+      // Reset any previous swipe-dismiss transform
+      const backdrop = document.getElementById('modal-day');
+      const panel = backdrop.querySelector('.sheet-panel');
+      panel.style.transition = '';
+      panel.style.transform = '';
+      backdrop.style.transition = '';
+      backdrop.style.backgroundColor = '';
+      switchDayModalTab((keepTab && !isViewerMode) ? modalDayTab : 'memo');
+      backdrop.classList.add('open');
     }
 
-    function updateDayModalAlarmPreview(code) {
-      const meta = getShiftMeta(code);
-      const alarm = getAlarmForShift(code);
-      const alarmStartLabel = { D: '08시 출근(D)', A: '16시 출근(A)', N: '00시 출근(N)', T: '09시 출근(T)', 'T금': '08시 출근(T금)' };
-      document.getElementById('modal-day-alarm-text').textContent = alarm.active
-        ? `${alarm.time} (${alarmStartLabel[alarm.alarmKey] || alarm.alarmKey} 알람 ON)`
-        : alarm.alarmName;
-      document.getElementById('modal-day-hours').textContent = `${meta.hours}시간`;
-    }
-
-    function renderDayPickers(activeCode) {
+    function renderDayPickers(activeCode, activeVac = null) {
       const basicCodes = ['D', 'A', 'N', 'T', 'T금', 'S', 'X'];
       // Continuous double shifts only (DA, AN; ND prohibited)
       const doubleCodes = ['DA', 'AN'];
-      const vacCodes = ['연차', '반차', '휴가'];
+      const vacCodes = ['연차', '공가', '기타'];
 
       const makeBtn = (c) => {
         const meta = getShiftMeta(c);
@@ -1224,38 +1347,18 @@
 
       const pDouble = document.getElementById('picker-double');
       pDouble.innerHTML = '';
-      const doubleInfo = {
-        DA: { badge: 'DA', sub: '08~24시 · 08시 출근 알람' },
-        AN: { badge: 'AN', sub: '16~08시 · 16시 출근 알람' }
-      };
-      doubleCodes.forEach(c => {
-        const meta = getShiftMeta(c);
-        const isSel = (c === activeCode);
-        const btn = document.createElement('button');
-        btn.className = `px-3 py-2 rounded-xl border flex items-center gap-2.5 transition ${
-          isSel ? 'border-[#0a84ff] bg-sky-950/50 ring-1 ring-[#0a84ff]' : 'border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800'
-        }`;
-        btn.innerHTML = `
-          <span class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-extrabold ${meta.badgeClass}">${doubleInfo[c].badge}</span>
-          <div class="text-left min-w-0">
-            <div class="text-xs font-bold text-white">${c} 연속대근</div>
-            <div class="text-[10px] text-zinc-400 truncate">${doubleInfo[c].sub}</div>
-          </div>
-        `;
-        btn.addEventListener('click', () => applyShiftOverride(c));
-        pDouble.appendChild(btn);
-      });
+      doubleCodes.forEach(c => pDouble.appendChild(makeBtn(c)));
 
       const pVac = document.getElementById('picker-vac');
       pVac.innerHTML = '';
       vacCodes.forEach(c => {
-        const isSel = (c === activeCode);
+        const isSel = (c === activeVac);
         const btn = document.createElement('button');
-        btn.className = `px-3 py-2 rounded-lg border text-xs font-bold transition ${
-          isSel ? 'border-emerald-400 bg-emerald-950 text-emerald-300' : 'border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-zinc-800'
+        btn.className = `py-2 rounded-lg border text-xs font-bold transition ${
+          isSel ? 'border-emerald-400 bg-emerald-950 text-emerald-300 ring-1 ring-emerald-400/60' : 'border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-zinc-800'
         }`;
         btn.textContent = c;
-        btn.addEventListener('click', () => applyShiftOverride(c));
+        btn.addEventListener('click', () => toggleVacation(c));
         pVac.appendChild(btn);
       });
     }
@@ -1273,6 +1376,26 @@
         });
         wrap.appendChild(btn);
       });
+    }
+
+    function toggleVacation(vacType) {
+      if (!selectedDateStr || isViewerMode) return;
+      if (state.vacations[selectedDateStr] === vacType) {
+        delete state.vacations[selectedDateStr];
+        showToast(`${vacType} 해제됨`);
+      } else {
+        // If currently AN pair, unlink cleanly before setting vacation
+        if (state.overrides[selectedDateStr] === 'AN') {
+          const nextStr = addDays(selectedDateStr, 1);
+          if (state.overrides[nextStr] === 'AN_C') delete state.overrides[nextStr];
+          delete state.overrides[selectedDateStr];
+        }
+        state.vacations[selectedDateStr] = vacType;
+        showToast(`${vacType} 적용됨 (캘린더엔 X 표시)`);
+      }
+      saveState();
+      renderCalendar();
+      openDayModal(selectedDateStr, true);
     }
 
     function applyShiftOverride(newCode) {
@@ -1301,7 +1424,7 @@
         state.overrides[nextStr] = 'AN_C';
         saveState();
         renderCalendar();
-        openDayModal(selectedDateStr);
+        openDayModal(selectedDateStr, true);
         showToast(`${selectedDateStr} A→ / ${nextStr} →N 연속근무 연결됨`);
         return;
       }
@@ -1314,7 +1437,7 @@
       }
       saveState();
       renderCalendar();
-      openDayModal(selectedDateStr);
+      openDayModal(selectedDateStr, true);
 
       const viol = checkDayViolations(selectedDateStr);
       if (viol.hasViolation) {
@@ -1486,7 +1609,7 @@
     }
 
     function renderLogView() {
-      const dates = new Set([...Object.keys(state.overrides), ...Object.keys(state.subNotes), ...Object.keys(state.dayMemos)]);
+      const dates = new Set([...Object.keys(state.overrides), ...Object.keys(state.vacations), ...Object.keys(state.subNotes), ...Object.keys(state.dayMemos)]);
       const sorted = Array.from(dates).sort().reverse();
       document.getElementById('log-count-badge').textContent = `${sorted.length}건`;
 
@@ -1499,11 +1622,13 @@
 
       sorted.forEach(dateStr => {
         const ov = state.overrides[dateStr];
+        const vac = state.vacations[dateStr] || '';
         const subNote = state.subNotes[dateStr] || '';
-        const memo = state.dayMemos[dateStr];
-        if (!ov && !subNote && (!memo || !memo.text)) return;
+        const memoList = getDayMemoList(dateStr);
+        const memoSummary = memoList.map(m => m.text).join(' · ');
+        if (!ov && !vac && !subNote && memoList.length === 0) return;
         const base = getBaseShift(dateStr);
-        const code = ov || base;
+        const code = ov || (vac ? 'X' : base);
         const meta = getShiftMeta(code);
 
         const item = document.createElement('div');
@@ -1512,9 +1637,9 @@
           <div class="flex items-center gap-3 min-w-0">
             <span class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-extrabold ${meta.badgeClass === 'badge-X' ? 'text-[#e05263] bg-zinc-900' : meta.badgeClass}">${meta.display || code}</span>
             <div class="min-w-0">
-              <div class="text-xs font-bold text-white">${dateStr} ${ov ? `<span class="text-zinc-400 font-normal">(${base} → ${meta.display || ov})</span>` : ''}</div>
+              <div class="text-xs font-bold text-white">${dateStr} ${vac ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[10px]">${vac}</span>` : ''} ${ov ? `<span class="text-zinc-400 font-normal">(${base} → ${meta.display || ov})</span>` : ''}</div>
               ${subNote ? `<div class="text-[11px] text-slate-400 truncate mt-0.5">대상자: ${escapeHtml(subNote)}</div>` : ''}
-              ${memo && memo.text ? `<div class="text-[11px] text-amber-400 truncate mt-0.5">${escapeHtml(memo.text)}</div>` : (!subNote ? `<div class="text-[11px] text-zinc-400 mt-0.5">${meta.label}</div>` : '')}
+              ${memoSummary ? `<div class="text-[11px] text-amber-400 truncate mt-0.5">${escapeHtml(memoSummary)}</div>` : (!subNote ? `<div class="text-[11px] text-zinc-400 mt-0.5">${meta.label}</div>` : '')}
             </div>
           </div>
           <span class="text-[11px] text-sky-400 shrink-0">이동</span>
@@ -1537,12 +1662,12 @@
 
       for (let d = 1; d <= daysInMonth; d++) {
         const ds = `${state.year}-${pad2(state.month)}-${pad2(d)}`;
-        const { code } = getFinalShift(ds);
+        const { code, vacation } = getFinalShift(ds);
         const meta = getShiftMeta(code);
         totalHours += meta.hours;
+        if (vacation) counts.휴가++;
         if (counts.hasOwnProperty(code)) counts[code]++;
-        else if (['연차','반차','휴가'].includes(code)) counts.휴가++;
-        else if (code === 'AN_C') counts.대근 += 0; // counted on AN start day
+        else if (code === 'AN_C') counts.대근 += 0;
         else counts.대근++;
       }
 
@@ -1602,14 +1727,37 @@
       if (tabName === 'log') renderLogView();
     }
 
-    function changeMonth(delta) {
-      let m = state.month + delta;
-      let y = state.year;
-      if (m < 1) { m = 12; y--; }
-      if (m > 12) { m = 1; y++; }
-      state.year = y;
-      state.month = m;
-      renderCalendar();
+    let isMonthAnimating = false;
+    function changeMonth(delta, fromSwipe = false) {
+      if (isMonthAnimating) return;
+      isMonthAnimating = true;
+      const grid = document.getElementById('calendar-grid');
+      const exitX = delta > 0 ? -42 : 42;
+
+      grid.classList.remove('cal-anim-next', 'cal-anim-prev');
+      grid.style.transition = 'transform 130ms ease-in, opacity 130ms ease-in';
+      grid.style.transform = `translateX(${fromSwipe ? exitX * 2.4 : exitX}px)`;
+      grid.style.opacity = '0';
+
+      setTimeout(() => {
+        let m = state.month + delta;
+        let y = state.year;
+        if (m < 1) { m = 12; y--; }
+        if (m > 12) { m = 1; y++; }
+        state.year = y;
+        state.month = m;
+        renderCalendar();
+
+        grid.style.transition = 'none';
+        grid.style.transform = '';
+        grid.style.opacity = '';
+        void grid.offsetWidth; // trigger reflow for clean entrance animation
+        grid.classList.add(delta > 0 ? 'cal-anim-next' : 'cal-anim-prev');
+        setTimeout(() => {
+          grid.classList.remove('cal-anim-next', 'cal-anim-prev');
+          isMonthAnimating = false;
+        }, 250);
+      }, 125);
     }
 
     function renderJumpModal() {
@@ -1657,6 +1805,9 @@
 
     // Share / Partner Viewer modal
     document.getElementById('btn-open-share').addEventListener('click', () => {
+      if (window.location.protocol === 'https:' && !window.location.hostname.includes('usercontent')) {
+        document.getElementById('share-url-preview').textContent = window.location.origin + window.location.pathname + '?mode=viewer';
+      }
       document.getElementById('modal-share').classList.add('open');
     });
     document.getElementById('btn-close-share').addEventListener('click', () => {
@@ -1695,11 +1846,28 @@
       });
     });
 
+    // Smooth slide-down close helper for Day Modal
+    function closeDayModal() {
+      const backdrop = document.getElementById('modal-day');
+      const panel = backdrop.querySelector('.sheet-panel');
+      panel.style.transition = 'transform 200ms cubic-bezier(0.22, 1, 0.36, 1)';
+      panel.style.transform = 'translateY(105%)';
+      backdrop.style.transition = 'background-color 200ms ease';
+      backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+      setTimeout(() => {
+        backdrop.classList.remove('open');
+        panel.style.transition = '';
+        panel.style.transform = '';
+        backdrop.style.transition = '';
+        backdrop.style.backgroundColor = '';
+      }, 205);
+    }
+
     // Day modal controls
-    document.getElementById('btn-close-day').addEventListener('click', () => document.getElementById('modal-day').classList.remove('open'));
-    document.getElementById('btn-done-day').addEventListener('click', () => document.getElementById('modal-day').classList.remove('open'));
+    document.getElementById('btn-close-day').addEventListener('click', closeDayModal);
+    document.getElementById('btn-done-day').addEventListener('click', closeDayModal);
     document.getElementById('btn-restore-day').addEventListener('click', () => {
-      if (!selectedDateStr || !state.overrides[selectedDateStr] || isViewerMode) return;
+      if (!selectedDateStr || (!state.overrides[selectedDateStr] && !state.vacations[selectedDateStr]) || isViewerMode) return;
       const cur = state.overrides[selectedDateStr];
       if (cur === 'AN') {
         const nextStr = addDays(selectedDateStr, 1);
@@ -1709,15 +1877,82 @@
         if (state.overrides[prevStr] === 'AN') delete state.overrides[prevStr];
       }
       delete state.overrides[selectedDateStr];
+      delete state.vacations[selectedDateStr];
       saveState();
       renderCalendar();
-      openDayModal(selectedDateStr);
+      openDayModal(selectedDateStr, true);
       showToast('원래 패턴으로 복원되었습니다');
     });
-    document.getElementById('btn-apply-custom').addEventListener('click', () => {
-      const val = document.getElementById('input-custom-code').value.trim().toUpperCase();
-      if (!val) return showToast('근무 코드를 입력해 주세요');
-      applyShiftOverride(val);
+    document.getElementById('tab-day-memo').addEventListener('click', () => switchDayModalTab('memo', true));
+    document.getElementById('tab-day-shift').addEventListener('click', () => switchDayModalTab('shift', true));
+
+    // Unified gesture inside Day Modal: left/right = tab switch, pull down = dismiss sheet
+    const dayModalBackdrop = document.getElementById('modal-day');
+    const dayModalPanel = dayModalBackdrop.querySelector('.sheet-panel');
+    let modalTouchX = 0;
+    let modalTouchY = 0;
+    let modalGesture = null; // 'horiz' | 'down' | null
+    let canPullDown = true;
+    dayModalPanel.addEventListener('touchstart', (e) => {
+      modalTouchX = e.touches[0].clientX;
+      modalTouchY = e.touches[0].clientY;
+      modalGesture = null;
+      const activePanel = document.getElementById(modalDayTab === 'memo' ? 'panel-day-memo' : 'panel-day-shift');
+      canPullDown = (dayModalPanel.scrollTop <= 0 && (!activePanel || activePanel.scrollTop <= 0));
+      dayModalPanel.style.transition = 'none';
+      dayModalBackdrop.style.transition = 'none';
+    }, { passive: true });
+    dayModalPanel.addEventListener('touchmove', (e) => {
+      const dx = e.touches[0].clientX - modalTouchX;
+      const dy = e.touches[0].clientY - modalTouchY;
+      if (!modalGesture && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+        if (Math.abs(dx) > Math.abs(dy) * 1.15) modalGesture = 'horiz';
+        else if (dy > 0 && canPullDown) modalGesture = 'down';
+      }
+      if (modalGesture === 'down' && dy > 0) {
+        dayModalPanel.style.transform = `translateY(${dy}px)`;
+        const alpha = Math.max(0.08, 0.72 * (1 - dy / 420));
+        dayModalBackdrop.style.backgroundColor = `rgba(0, 0, 0, ${alpha.toFixed(2)})`;
+      }
+    }, { passive: true });
+    dayModalPanel.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - modalTouchX;
+      const dy = e.changedTouches[0].clientY - modalTouchY;
+      if (modalGesture === 'down') {
+        if (dy > 80) {
+          closeDayModal();
+        } else {
+          dayModalPanel.style.transition = 'transform 200ms cubic-bezier(0.22, 1, 0.36, 1)';
+          dayModalPanel.style.transform = 'translateY(0)';
+          dayModalBackdrop.style.transition = 'background-color 200ms ease';
+          dayModalBackdrop.style.backgroundColor = '';
+        }
+      } else if (modalGesture === 'horiz' && !isViewerMode && Math.abs(dx) > 48) {
+        if (dx < 0 && modalDayTab === 'memo') switchDayModalTab('shift', true);
+        else if (dx > 0 && modalDayTab === 'shift') switchDayModalTab('memo', true);
+      }
+      modalGesture = null;
+    }, { passive: true });
+    document.getElementById('btn-modal-prev-day').addEventListener('click', () => {
+      if (!selectedDateStr) return;
+      openDayModal(addDays(selectedDateStr, -1), true);
+    });
+    document.getElementById('btn-modal-next-day').addEventListener('click', () => {
+      if (!selectedDateStr) return;
+      openDayModal(addDays(selectedDateStr, 1), true);
+    });
+    document.getElementById('btn-toggle-new-memo').addEventListener('click', () => {
+      const f = document.getElementById('new-memo-form');
+      f.classList.toggle('hidden');
+      if (!f.classList.contains('hidden')) document.getElementById('input-day-memo').focus();
+    });
+    document.getElementById('btn-clear-sub-inline').addEventListener('click', () => {
+      if (!selectedDateStr || isViewerMode) return;
+      delete state.subNotes[selectedDateStr];
+      saveState();
+      renderCalendar();
+      openDayModal(selectedDateStr, true);
+      showToast('대상자 메모가 삭제되었습니다');
     });
     document.getElementById('btn-save-sub-note').addEventListener('click', () => {
       if (!selectedDateStr || isViewerMode) return;
@@ -1726,6 +1961,7 @@
       else delete state.subNotes[selectedDateStr];
       saveState();
       renderCalendar();
+      openDayModal(selectedDateStr, true);
       showToast(txt ? '대상자 메모가 저장되었습니다' : '대상자 메모가 삭제되었습니다');
     });
 
@@ -1749,11 +1985,18 @@
     document.getElementById('btn-save-memo').addEventListener('click', () => {
       if (!selectedDateStr || isViewerMode) return;
       const txt = document.getElementById('input-day-memo').value.trim();
-      if (txt) state.dayMemos[selectedDateStr] = { text: txt, color: selectedMemoColor };
-      else delete state.dayMemos[selectedDateStr];
+      const timeStr = document.getElementById('input-memo-time').value.trim();
+      if (!txt) return showToast('메모 내용을 입력해 주세요');
+      const list = getDayMemoList(selectedDateStr);
+      list.push({ id: String(Date.now()), time: timeStr, text: txt, color: selectedMemoColor });
+      state.dayMemos[selectedDateStr] = list;
       saveState();
       renderCalendar();
-      showToast(txt ? '일정 메모가 저장되었습니다' : '일정 메모가 삭제되었습니다');
+      document.getElementById('input-day-memo').value = '';
+      document.getElementById('input-memo-time').value = '';
+      document.getElementById('new-memo-form').classList.add('hidden');
+      renderDayMemoCards(selectedDateStr);
+      showToast('일정 메모가 추가되었습니다');
     });
 
     // Monthly memo modal
@@ -1779,7 +2022,10 @@
 
     ['modal-day', 'modal-stats', 'modal-monthly-memo', 'modal-month-jump', 'modal-share'].forEach(id => {
       document.getElementById(id).addEventListener('click', (e) => {
-        if (e.target.id === id) e.target.classList.remove('open');
+        if (e.target.id === id) {
+          if (id === 'modal-day') closeDayModal();
+          else e.target.classList.remove('open');
+        }
       });
     });
     document.getElementById('btn-close-stats').addEventListener('click', () => document.getElementById('modal-stats').classList.remove('open'));
@@ -1803,10 +2049,11 @@
     });
     document.getElementById('team-compare-date').addEventListener('change', renderTeamsView);
     document.getElementById('btn-export-json').addEventListener('click', () => {
-      copyText(JSON.stringify({ overrides: state.overrides, subNotes: state.subNotes, dayMemos: state.dayMemos, alarms: state.alarms }, null, 2), '백업 JSON이 복사되었습니다');
+      copyText(JSON.stringify({ overrides: state.overrides, vacations: state.vacations, subNotes: state.subNotes, dayMemos: state.dayMemos, alarms: state.alarms }, null, 2), '백업 JSON이 복사되었습니다');
     });
     document.getElementById('btn-reset-overrides').addEventListener('click', () => {
       state.overrides = {};
+      state.vacations = {};
       saveState();
       renderCalendar();
       showToast('모든 대근·휴가 수정 내역이 초기화되었습니다');
@@ -1821,13 +2068,43 @@
       try { window.location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent('근무알람동기화'); } catch (e) {}
     });
 
-    // Touch swipe left/right
+    // Smooth live finger-follow horizontal swipe
     let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwipingHoriz = false;
     const calEl = document.getElementById('calendar-grid');
-    calEl.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    calEl.addEventListener('touchstart', (e) => {
+      if (isMonthAnimating) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      isSwipingHoriz = false;
+      calEl.style.transition = 'none';
+    }, { passive: true });
+    calEl.addEventListener('touchmove', (e) => {
+      if (isMonthAnimating) return;
+      const dx = e.touches[0].clientX - touchStartX;
+      const dy = e.touches[0].clientY - touchStartY;
+      if (!isSwipingHoriz && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        isSwipingHoriz = true;
+      }
+      if (isSwipingHoriz) {
+        const damped = dx * 0.65;
+        const fade = Math.max(0.45, 1 - Math.abs(dx) / 360);
+        calEl.style.transform = `translateX(${damped}px)`;
+        calEl.style.opacity = String(fade);
+      }
+    }, { passive: true });
     calEl.addEventListener('touchend', (e) => {
-      const dx = e.changedTouches[0].screenX - touchStartX;
-      if (Math.abs(dx) > 55) changeMonth(dx < 0 ? 1 : -1);
+      if (!isSwipingHoriz || isMonthAnimating) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      isSwipingHoriz = false;
+      if (Math.abs(dx) > 52) {
+        changeMonth(dx < 0 ? 1 : -1, true);
+      } else {
+        calEl.style.transition = 'transform 200ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease';
+        calEl.style.transform = 'translateX(0)';
+        calEl.style.opacity = '1';
+      }
     }, { passive: true });
 
     // Initial render & optional cloud pull
