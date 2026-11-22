@@ -399,7 +399,7 @@
         </div>
 
         <!-- Floating Manual Backup Button (Google Sheets) -->
-        <button id="btn-fab-sync" aria-label="구글 시트 수동 백업" title="구글 시트 수동 백업" style="bottom: calc(env(safe-area-inset-bottom) + 64px);" class="fixed right-4 sm:right-[calc(50%-224px)] z-30 w-11 h-11 rounded-full bg-[#0a84ff] text-white shadow-lg shadow-sky-950/60 flex items-center justify-center active:scale-95 transition-transform">
+        <button id="btn-fab-sync" aria-label="구글 시트 백업 및 알람 동기화" title="구글 시트 백업 + 알람 동기화" style="bottom: calc(env(safe-area-inset-bottom) + 64px);" class="fixed right-4 sm:right-[calc(50%-224px)] z-30 w-11 h-11 rounded-full bg-[#0a84ff] text-white shadow-lg shadow-sky-950/60 flex items-center justify-center active:scale-95 transition-transform">
           <svg id="fab-sync-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="12 12 12 17"/><polyline points="9.5 14.5 12 12 14.5 14.5"/></svg>
           <span id="fab-unsynced-dot" class="hidden absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-amber-400 border-2 border-black"></span>
         </button>
@@ -657,8 +657,24 @@
                 <input id="input-event-end" type="date" class="flex-1 min-w-0 max-w-full bg-black border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white" />
               </div>
             </div>
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="flex items-center gap-1 bg-black border border-zinc-800 rounded-lg p-0.5">
+                <button type="button" data-ev-ampm="none" class="ev-ampm-btn px-2 py-1 rounded-md text-[11px] font-bold bg-zinc-700 text-white">종일</button>
+                <button type="button" data-ev-ampm="오전" class="ev-ampm-btn px-2 py-1 rounded-md text-[11px] font-bold text-zinc-400">오전</button>
+                <button type="button" data-ev-ampm="오후" class="ev-ampm-btn px-2 py-1 rounded-md text-[11px] font-bold text-zinc-400">오후</button>
+              </div>
+              <div id="event-wheel-wrap" class="hidden flex items-center gap-1">
+                <select id="select-event-hour" aria-label="일정 시" class="bg-black border border-zinc-700 rounded-lg px-2 py-1 text-xs font-bold text-white"></select>
+                <span class="text-xs text-zinc-400 font-bold">:</span>
+                <select id="select-event-min" aria-label="일정 분" class="bg-black border border-zinc-700 rounded-lg px-2 py-1 text-xs font-bold text-white"></select>
+              </div>
+            </div>
+            <label id="event-remind-label" class="hidden flex items-center gap-2 text-[11px] text-pink-200 cursor-pointer select-none">
+              <input id="chk-event-remind" type="checkbox" checked class="accent-pink-500 w-3.5 h-3.5 rounded" />
+              <span>등록 시 아이폰 미리알림 자동 추가 (1시간 전 알림)</span>
+            </label>
             <div class="flex gap-2">
-              <input id="input-event-title" type="text" maxlength="24" placeholder="예: 여자친구 휴가, 가족 여행" class="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500" />
+              <input id="input-event-title" type="text" maxlength="24" placeholder="예: 포항여행, 병원 예약" class="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500" />
               <button id="btn-save-event" class="px-3.5 py-2 rounded-lg bg-pink-600 text-xs font-bold text-white hover:bg-pink-500 shrink-0">등록</button>
             </div>
           </div>
@@ -851,6 +867,7 @@
       tHolidayOff: true,
       gasUrl: 'https://script.google.com/macros/s/AKfycbyQFqqiQL7zdx0lgJCwZEmmWSwnixrwVBsFpGnbXJVi6USXAp7al8ynDnXY284v-_-X9A/exec',
       ownerKey: '',
+      autoSyncAlarmOnBackup: true,
       unsynced: false,
       lastBackupAt: '',
       overrides: {},
@@ -977,7 +994,14 @@
         state.unsynced = false;
         state.lastBackupAt = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
         saveState(true);
-        if (isManual) showToast(`구글 시트 백업 완료 (${state.lastBackupAt})`);
+        if (isManual) {
+          showToast(`백업 완료 (${state.lastBackupAt}) · 알람 동기화 실행`);
+          if (state.autoSyncAlarmOnBackup) {
+            setTimeout(() => {
+              try { window.location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent('근무알람동기화'); } catch (e) {}
+            }, 350);
+          }
+        }
       } catch (e) {
         state.unsynced = true;
         saveState(true);
@@ -992,6 +1016,7 @@
     let selectedMemoColor = '#d97706';
     let selectedEventColor = '#ec4899';
     let selectedAmPm = 'none';
+    let selectedEventAmPm = 'none';
     let modalDayTab = 'memo'; // 'memo' | 'shift'
     const EVENT_COLORS = ['#ec4899', '#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b'];
     let jumpYear = state.year;
@@ -1340,16 +1365,24 @@
         card.style.background = (ev.color || '#ec4899') + '22';
         card.style.borderColor = (ev.color || '#ec4899') + '88';
         const rangeStr = ev.startDate === ev.endDate ? ev.startDate.slice(5) : `${ev.startDate.slice(5)} ~ ${ev.endDate.slice(5)}`;
+        const timeBadge = ev.time ? ` · ${escapeHtml(ev.time)}` : '';
         card.innerHTML = `
-          <div class="flex items-center gap-2.5 min-w-0">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
             <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${ev.color || '#ec4899'}"></span>
             <div class="min-w-0">
-              <div class="text-[10px] text-zinc-300 font-medium">일정 · ${rangeStr}</div>
+              <div class="text-[10px] text-zinc-300 font-medium">일정 · ${rangeStr}${timeBadge}</div>
               <div class="text-xs font-bold text-white truncate">${escapeHtml(ev.title)}</div>
             </div>
           </div>
-          ${!isViewerMode ? `<button data-ev-del="${ev.id}" class="text-[11px] text-zinc-400 hover:text-rose-400 shrink-0">삭제</button>` : ''}
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${(!isViewerMode && ev.time) ? `<button data-ev-rem="${ev.id}" title="1시간 전 미리알림 등록" class="px-2 py-1 rounded-md bg-black/30 text-[10px] font-bold text-pink-200 hover:bg-black/50">🔔</button>` : ''}
+            ${!isViewerMode ? `<button data-ev-del="${ev.id}" class="text-[11px] text-zinc-400 hover:text-rose-400">삭제</button>` : ''}
+          </div>
         `;
+        const remBtn = card.querySelector('[data-ev-rem]');
+        if (remBtn) {
+          remBtn.addEventListener('click', () => triggerReminderShortcut(ev.startDate, ev.time, ev.title));
+        }
         const delBtn = card.querySelector('[data-ev-del]');
         if (delBtn) {
           delBtn.addEventListener('click', () => {
@@ -1384,8 +1417,15 @@
             ${m.time ? `<div class="text-[11px] text-white/80 font-medium">${escapeHtml(m.time)}</div>` : ''}
             <div class="text-sm font-bold text-white leading-snug break-words ${m.time ? 'mt-0.5' : ''}">${escapeHtml(m.text)}</div>
           </div>
-          ${!isViewerMode ? `<button data-del-idx="${idx}" aria-label="메모 삭제" class="p-1.5 rounded-lg bg-black/20 text-white/90 hover:bg-black/35 text-xs font-bold shrink-0">삭제</button>` : ''}
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${(!isViewerMode && m.time) ? `<button data-rem-idx="${idx}" title="1시간 전 미리알림" class="p-1.5 rounded-lg bg-black/20 text-white hover:bg-black/35 text-xs">🔔</button>` : ''}
+            ${!isViewerMode ? `<button data-del-idx="${idx}" aria-label="메모 삭제" class="p-1.5 rounded-lg bg-black/20 text-white/90 hover:bg-black/35 text-xs font-bold">삭제</button>` : ''}
+          </div>
         `;
+        const remBtn = card.querySelector('[data-rem-idx]');
+        if (remBtn) {
+          remBtn.addEventListener('click', () => triggerReminderShortcut(dateStr, m.time, m.text));
+        }
         const delBtn = card.querySelector('[data-del-idx]');
         if (delBtn) {
           delBtn.addEventListener('click', () => {
@@ -1466,6 +1506,7 @@
       document.getElementById('input-event-start').value = dateStr;
       document.getElementById('input-event-end').value = dateStr;
       setAmPm('none');
+      setEventAmPm('none');
       renderMemoColorPicker();
       renderEventColorPicker();
 
@@ -1577,23 +1618,58 @@
       document.getElementById('memo-wheel-wrap').classList.toggle('hidden', val === 'none');
     }
 
-    // Populate hour (1..12) and minute (00..55 step 5) native wheel pickers
+    function setEventAmPm(val) {
+      selectedEventAmPm = val;
+      document.querySelectorAll('.ev-ampm-btn').forEach(btn => {
+        const active = (btn.dataset.evAmpm === val);
+        btn.className = `ev-ampm-btn px-2 py-1 rounded-md text-[11px] font-bold transition ${active ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'}`;
+      });
+      const isTimed = (val !== 'none');
+      document.getElementById('event-wheel-wrap').classList.toggle('hidden', !isTimed);
+      document.getElementById('event-remind-label').classList.toggle('hidden', !isTimed);
+    }
+
+    // Parse '오전/오후 H:MM' -> subtract 1 hour -> launch iOS Reminder Shortcut
+    function triggerReminderShortcut(dateStr, timeStr, title) {
+      const m = String(timeStr || '').match(/(오전|오후)\s*(\d{1,2}):(\d{2})/);
+      if (!m) {
+        showToast('시간이 설정된 일정만 1시간 전 알림을 등록할 수 있습니다');
+        return;
+      }
+      let h = Number(m[2]);
+      const min = Number(m[3]);
+      if (m[1] === '오전' && h === 12) h = 0;
+      if (m[1] === '오후' && h < 12) h += 12;
+      const [y, mo, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, mo - 1, d, h, min, 0);
+      dt.setHours(dt.getHours() - 1); // 1시간 전
+      const remDate = `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())} ${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
+      const payload = `${title} (${timeStr})|${remDate}`;
+      showToast(`1시간 전 미리알림 등록 (${remDate})`);
+      try {
+        window.location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent('일정미리알림등록') + '&input=text&text=' + encodeURIComponent(payload);
+      } catch (e) {}
+    }
+
+    // Populate hour (1..12) and minute (00..55 step 5) native wheel pickers for both memo & event
     (function initTimeWheels() {
-      const hSel = document.getElementById('select-memo-hour');
-      const mSel = document.getElementById('select-memo-min');
-      for (let h = 1; h <= 12; h++) {
-        const opt = document.createElement('option');
-        opt.value = String(h);
-        opt.textContent = `${h}시`;
-        if (h === 6) opt.selected = true;
-        hSel.appendChild(opt);
-      }
-      for (let m = 0; m < 60; m += 5) {
-        const opt = document.createElement('option');
-        opt.value = pad2(m);
-        opt.textContent = `${pad2(m)}분`;
-        mSel.appendChild(opt);
-      }
+      [['select-memo-hour', 'select-memo-min', 6], ['select-event-hour', 'select-event-min', 10]].forEach(([hId, mId, defH]) => {
+        const hSel = document.getElementById(hId);
+        const mSel = document.getElementById(mId);
+        for (let h = 1; h <= 12; h++) {
+          const opt = document.createElement('option');
+          opt.value = String(h);
+          opt.textContent = `${h}시`;
+          if (h === defH) opt.selected = true;
+          hSel.appendChild(opt);
+        }
+        for (let m = 0; m < 60; m += 5) {
+          const opt = document.createElement('option');
+          opt.value = pad2(m);
+          opt.textContent = `${pad2(m)}분`;
+          mSel.appendChild(opt);
+        }
+      });
     })();
 
     function toggleVacation(vacType) {
@@ -2171,6 +2247,9 @@
     document.querySelectorAll('.ampm-btn').forEach(btn => {
       btn.addEventListener('click', () => setAmPm(btn.dataset.ampm));
     });
+    document.querySelectorAll('.ev-ampm-btn').forEach(btn => {
+      btn.addEventListener('click', () => setEventAmPm(btn.dataset.evAmpm));
+    });
     document.getElementById('btn-toggle-new-memo').addEventListener('click', () => {
       document.getElementById('new-event-form').classList.add('hidden');
       const f = document.getElementById('new-memo-form');
@@ -2192,15 +2271,27 @@
       if (!startDate) return showToast('시작일을 선택해 주세요');
       const sDate = startDate <= endDate ? startDate : endDate;
       const eDate = startDate <= endDate ? endDate : startDate;
+      let evTime = '';
+      if (selectedEventAmPm !== 'none') {
+        const h = document.getElementById('select-event-hour').value;
+        const m = document.getElementById('select-event-min').value;
+        evTime = `${selectedEventAmPm} ${h}:${m}`;
+      }
+      const shouldRemind = evTime && document.getElementById('chk-event-remind').checked;
       state.events = state.events || [];
-      state.events.push({ id: 'ev_' + Date.now(), title, startDate: sDate, endDate: eDate, color: selectedEventColor });
+      state.events.push({ id: 'ev_' + Date.now(), title, startDate: sDate, endDate: eDate, time: evTime, color: selectedEventColor });
       saveState();
       renderCalendar();
       document.getElementById('input-event-title').value = '';
+      setEventAmPm('none');
       document.getElementById('new-event-form').classList.add('hidden');
       renderDayEventCards(selectedDateStr);
       renderDayMemoCards(selectedDateStr);
-      showToast('기간 일정이 등록되었습니다');
+      if (shouldRemind) {
+        triggerReminderShortcut(sDate, evTime, title);
+      } else {
+        showToast('기간 일정이 등록되었습니다');
+      }
     });
     document.getElementById('btn-clear-sub-inline').addEventListener('click', () => {
       if (!selectedDateStr || isViewerMode) return;
