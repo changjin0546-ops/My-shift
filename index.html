@@ -1325,7 +1325,8 @@
           else if (isStart) cls += ' ev-start';
           else if (isEnd) cls += ' ev-end';
           const showText = isStart || dow === 0;
-          return `<div class="${cls}" style="background:${ev.color || '#ec4899'}">${showText ? escapeHtml(ev.title) : '&nbsp;'}</div>`;
+          const bellMark = (!isViewerMode && ev.reminded) ? '🔔' : '';
+          return `<div class="${cls}" style="background:${ev.color || '#ec4899'}">${showText ? bellMark + escapeHtml(ev.title) : '&nbsp;'}</div>`;
         }).join('');
         const viol = checkDayViolations(dateStr);
 
@@ -1362,7 +1363,7 @@
           </div>
           ${eventBarsHtml}
           ${subNote ? `<div class="sub-chip">${escapeHtml(subNote)}</div>` : ''}
-          ${firstMemo ? `<div class="memo-chip" style="background:${firstMemo.color || '#d97706'}">${escapeHtml(firstMemo.text)}${extraMemoCount ? ' +' + extraMemoCount : ''}</div>` : ''}
+          ${firstMemo ? `<div class="memo-chip" style="background:${firstMemo.color || '#d97706'}">${firstMemo.reminded ? '🔔' : ''}${escapeHtml(firstMemo.text)}${extraMemoCount ? ' +' + extraMemoCount : ''}</div>` : ''}
         `;
         cell.addEventListener('click', () => openDayModal(dateStr));
         frag.appendChild(cell);
@@ -1432,14 +1433,22 @@
             </div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
-            ${(!isViewerMode && ev.time) ? `<button data-ev-rem="${ev.id}" title="1시간 전 미리알림 등록" class="px-1.5 py-1 rounded-md bg-black/30 text-[10px] font-bold text-pink-200 hover:bg-black/50">🔔</button>` : ''}
+            ${(!isViewerMode && ev.time) ? (ev.reminded
+              ? `<button data-ev-rem="${ev.id}" title="미리알림 등록됨 (다시 등록하려면 탭)" class="px-2 py-1 rounded-md bg-amber-500/25 border border-amber-400/60 text-[10px] font-bold text-amber-200">🔔 알림됨</button>`
+              : `<button data-ev-rem="${ev.id}" title="1시간 전 미리알림 등록" class="px-2 py-1 rounded-md bg-black/30 border border-zinc-700/80 text-[10px] font-semibold text-zinc-300 hover:bg-black/50">🔔 알림</button>`) : ''}
             ${!isViewerMode ? `<button data-ev-edit="${ev.id}" class="text-[11px] text-sky-300 hover:text-sky-200 font-semibold">수정</button>` : ''}
             ${!isViewerMode ? `<button data-ev-del="${ev.id}" class="text-[11px] text-zinc-400 hover:text-rose-400">삭제</button>` : ''}
           </div>
         `;
         const remBtn = card.querySelector('[data-ev-rem]');
         if (remBtn) {
-          remBtn.addEventListener('click', () => triggerReminderShortcut(ev.startDate, ev.time, ev.title));
+          remBtn.addEventListener('click', () => {
+            ev.reminded = true;
+            saveState();
+            renderCalendar();
+            renderDayEventCards(dateStr);
+            triggerReminderShortcut(ev.startDate, ev.time, ev.title);
+          });
         }
         const editBtn = card.querySelector('[data-ev-edit]');
         if (editBtn) {
@@ -1494,14 +1503,26 @@
             <div class="text-sm font-bold text-white leading-snug break-words ${m.time ? 'mt-0.5' : ''}">${escapeHtml(m.text)}</div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
-            ${(!isViewerMode && m.time) ? `<button data-rem-idx="${idx}" title="1시간 전 미리알림" class="p-1.5 rounded-lg bg-black/20 text-white hover:bg-black/35 text-xs">🔔</button>` : ''}
+            ${(!isViewerMode && m.time) ? (m.reminded
+              ? `<button data-rem-idx="${idx}" title="미리알림 등록됨 (다시 등록하려면 탭)" class="px-2 py-1 rounded-lg bg-white/25 border border-white/50 text-white text-[10px] font-extrabold">🔔 알림됨</button>`
+              : `<button data-rem-idx="${idx}" title="1시간 전 미리알림 등록" class="px-2 py-1 rounded-lg bg-black/25 text-white/85 hover:bg-black/40 text-[10px] font-semibold">🔔 알림</button>`) : ''}
             ${!isViewerMode ? `<button data-edit-idx="${idx}" aria-label="메모 수정" class="px-2 py-1.5 rounded-lg bg-black/25 text-white hover:bg-black/40 text-xs font-bold">수정</button>` : ''}
             ${!isViewerMode ? `<button data-del-idx="${idx}" aria-label="메모 삭제" class="px-2 py-1.5 rounded-lg bg-black/20 text-white/90 hover:bg-black/35 text-xs font-bold">삭제</button>` : ''}
           </div>
         `;
         const remBtn = card.querySelector('[data-rem-idx]');
         if (remBtn) {
-          remBtn.addEventListener('click', () => triggerReminderShortcut(dateStr, m.time, m.text));
+          remBtn.addEventListener('click', () => {
+            const cur = getDayMemoList(dateStr);
+            if (cur[idx]) {
+              cur[idx].reminded = true;
+              state.dayMemos[dateStr] = cur;
+              saveState();
+              renderCalendar();
+              renderDayMemoCards(dateStr);
+            }
+            triggerReminderShortcut(dateStr, m.time, m.text);
+          });
         }
         const editBtn = card.querySelector('[data-edit-idx]');
         if (editBtn) {
@@ -2400,12 +2421,15 @@
       if (editingEventId) {
         const idx = state.events.findIndex(x => x.id === editingEventId);
         if (idx >= 0) {
-          state.events[idx] = { ...state.events[idx], title, startDate: sDate, endDate: eDate, time: evTime, color: selectedEventColor };
+          const prev = state.events[idx];
+          const timeChanged = (prev.startDate !== sDate || prev.time !== evTime);
+          const nextReminded = shouldRemind ? true : (evTime && !timeChanged ? Boolean(prev.reminded) : false);
+          state.events[idx] = { ...prev, title, startDate: sDate, endDate: eDate, time: evTime, color: selectedEventColor, reminded: nextReminded };
         }
         editingEventId = null;
         document.getElementById('btn-save-event').textContent = '등록';
       } else {
-        state.events.push({ id: 'ev_' + Date.now(), title, startDate: sDate, endDate: eDate, time: evTime, color: selectedEventColor });
+        state.events.push({ id: 'ev_' + Date.now(), title, startDate: sDate, endDate: eDate, time: evTime, color: selectedEventColor, reminded: Boolean(shouldRemind) });
       }
       saveState();
       renderCalendar();
@@ -2483,7 +2507,9 @@
       const list = getDayMemoList(selectedDateStr);
       const wasEdit = (editingMemoIdx !== null && list[editingMemoIdx]);
       if (wasEdit) {
-        list[editingMemoIdx] = { ...list[editingMemoIdx], time: timeStr, text: txt, color: selectedMemoColor };
+        const prevM = list[editingMemoIdx];
+        const nextMRem = (timeStr && prevM.time === timeStr) ? Boolean(prevM.reminded) : false;
+        list[editingMemoIdx] = { ...prevM, time: timeStr, text: txt, color: selectedMemoColor, reminded: nextMRem };
         editingMemoIdx = null;
         document.getElementById('btn-save-memo').textContent = '추가';
       } else {
