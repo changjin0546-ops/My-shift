@@ -510,16 +510,19 @@
         </div>
       </section>
 
-      <!-- VIEW 5: Overrides & Memos Log -->
-      <section id="view-log" class="hidden flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-        <div class="flex items-center justify-between">
+      <!-- VIEW 5: Upcoming Overrides, Events & Memos Log -->
+      <section id="view-log" class="hidden flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+        <div class="flex items-center justify-between gap-2">
           <div>
-            <h2 class="text-base font-bold text-white">대근 · 휴가 · 일정 기록</h2>
-            <p class="text-xs text-zinc-400 mt-0.5">기본 패턴에서 수정된 날짜와 메모 모아보기</p>
+            <h2 class="text-base font-bold text-white">다가오는 일정 · 대근</h2>
+            <p id="log-subtitle" class="text-xs text-zinc-400 mt-0.5">오늘 이후 가까운 순서대로 표시</p>
           </div>
-          <span id="log-count-badge" class="px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-300">0건</span>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button id="btn-toggle-past-logs" class="px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-semibold text-zinc-400 hover:text-white">지난 기록</button>
+            <span id="log-count-badge" class="px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-300">0건</span>
+          </div>
         </div>
-        <div id="log-list" class="space-y-2"></div>
+        <div id="log-list" class="space-y-1.5"></div>
       </section>
     </main>
 
@@ -2023,50 +2026,90 @@
       document.getElementById('shortcut-json-preview').textContent = JSON.stringify(payload, null, 2);
     }
 
+    let showPastLogs = false;
     function renderLogView() {
       const eventStarts = (state.events || []).map(ev => ev.startDate);
-      const dates = isViewerMode
+      const rawDates = isViewerMode
         ? new Set([...Object.keys(state.overrides), ...eventStarts])
         : new Set([...Object.keys(state.overrides), ...Object.keys(state.vacations), ...Object.keys(state.subNotes), ...Object.keys(state.dayMemos), ...eventStarts]);
-      const sorted = Array.from(dates).sort().reverse();
-      document.getElementById('log-count-badge').textContent = `${sorted.length}건`;
 
-      const list = document.getElementById('log-list');
-      list.innerHTML = '';
-      if (sorted.length === 0) {
-        list.innerHTML = '<div class="text-center py-12 text-xs text-zinc-500">수정된 대근·휴가 또는 일정 메모가 아직 없습니다.</div>';
-        return;
-      }
-
-      sorted.forEach(dateStr => {
+      const rows = [];
+      Array.from(rawDates).forEach(dateStr => {
         const ov = state.overrides[dateStr];
         const vac = isViewerMode ? '' : (state.vacations[dateStr] || '');
         const subNote = isViewerMode ? '' : (state.subNotes[dateStr] || '');
         const memoList = isViewerMode ? [] : getDayMemoList(dateStr);
         const dayEvs = (state.events || []).filter(ev => ev.startDate === dateStr);
-        const evSummary = dayEvs.map(e => e.title).join(' · ');
-        const memoSummary = memoList.map(m => m.text).join(' · ');
+        // Skip AN_C second-day link if it has no own memo/event/subNote
+        if (ov === 'AN_C' && !vac && !subNote && memoList.length === 0 && dayEvs.length === 0) return;
         if (!ov && !vac && !subNote && memoList.length === 0 && dayEvs.length === 0) return;
+
+        const isOngoingEvent = dayEvs.some(ev => ev.endDate >= TODAY_STR);
+        const isUpcoming = (dateStr >= TODAY_STR) || isOngoingEvent;
+        if (!showPastLogs && !isUpcoming) return;
+
+        rows.push({ dateStr, ov, vac, subNote, memoList, dayEvs, isUpcoming });
+      });
+
+      // Upcoming: earliest/closest first (ascending); Past included: newest first or ascending from today
+      rows.sort((a, b) => showPastLogs ? b.dateStr.localeCompare(a.dateStr) : a.dateStr.localeCompare(b.dateStr));
+
+      const pastBtn = document.getElementById('btn-toggle-past-logs');
+      if (pastBtn) {
+        pastBtn.textContent = showPastLogs ? '다가오는 것만' : '지난 기록';
+        pastBtn.className = showPastLogs
+          ? 'px-2.5 py-1 rounded-full bg-[#0a84ff]/20 border border-[#0a84ff] text-[11px] font-semibold text-sky-300'
+          : 'px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-semibold text-zinc-400 hover:text-white';
+      }
+      const subEl = document.getElementById('log-subtitle');
+      if (subEl) subEl.textContent = showPastLogs ? '지난 기록 포함 전체 보기' : '오늘 이후 가까운 순서대로 표시';
+      document.getElementById('log-count-badge').textContent = `${rows.length}건`;
+
+      const list = document.getElementById('log-list');
+      list.innerHTML = '';
+      if (rows.length === 0) {
+        list.innerHTML = '<div class="text-center py-12 text-xs text-zinc-500">다가오는 일정이나 수정된 근무가 없습니다.</div>';
+        return;
+      }
+
+      const dowNames = ['일','월','화','수','목','금','토'];
+      rows.forEach(({ dateStr, ov, vac, subNote, memoList, dayEvs }) => {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const dow = dowNames[new Date(y, m - 1, d).getDay()];
+        const dDiff = diffDays(dateStr, TODAY_STR);
+        let dTag = '';
+        if (dDiff === 0) dTag = '<span class="ml-1 px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-300 text-[10px] font-bold">오늘</span>';
+        else if (dDiff === 1) dTag = '<span class="ml-1 px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-semibold">내일</span>';
+        else if (dDiff > 1) dTag = `<span class="ml-1 text-[10px] font-semibold text-zinc-400">D-${dDiff}</span>`;
+
         const base = getBaseShift(dateStr);
         const code = ov || (vac ? 'X' : base);
         const meta = getShiftMeta(code);
+        const evSummary = dayEvs.map(e => e.title).join(' · ');
+        const memoSummary = memoList.map(x => x.text).join(' · ');
+        const subParts = [];
+        if (evSummary) subParts.push(`<span class="text-pink-400">${escapeHtml(evSummary)}</span>`);
+        if (memoSummary) subParts.push(`<span class="text-amber-400">${escapeHtml(memoSummary)}</span>`);
+        if (subNote) subParts.push(`<span class="text-slate-400">${escapeHtml(subNote)}</span>`);
+        const detailLine = subParts.length ? subParts.join(' <span class="text-zinc-600">·</span> ') : `<span class="text-zinc-400">${meta.label}</span>`;
 
         const item = document.createElement('div');
-        item.className = 'bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center justify-between gap-3 cursor-pointer hover:border-zinc-700';
+        item.className = `bg-zinc-950 border border-zinc-800/90 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2.5 cursor-pointer hover:border-zinc-700 ${dDiff < 0 ? 'opacity-55' : ''}`;
         item.innerHTML = `
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-extrabold ${meta.badgeClass === 'badge-X' ? 'text-[#e05263] bg-zinc-900' : meta.badgeClass}">${meta.display || code}</span>
-            <div class="min-w-0">
-              <div class="text-xs font-bold text-white">${dateStr} ${vac ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[10px]">${vac}</span>` : ''} ${ov ? `<span class="text-zinc-400 font-normal">(${base} → ${meta.display || ov})</span>` : ''}</div>
-              ${evSummary ? `<div class="text-[11px] text-pink-400 truncate mt-0.5">일정: ${escapeHtml(evSummary)}</div>` : ''}
-              ${subNote ? `<div class="text-[11px] text-slate-400 truncate mt-0.5">대상자: ${escapeHtml(subNote)}</div>` : ''}
-              ${memoSummary ? `<div class="text-[11px] text-amber-400 truncate mt-0.5">${escapeHtml(memoSummary)}</div>` : (!subNote && !evSummary ? `<div class="text-[11px] text-zinc-400 mt-0.5">${meta.label}</div>` : '')}
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <span class="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-extrabold ${meta.badgeClass === 'badge-X' ? 'text-[#e05263] bg-zinc-900' : meta.badgeClass}">${meta.display || code}</span>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-bold text-white flex items-center flex-wrap gap-y-0.5">
+                <span>${m}/${d}(${dow})</span>${dTag}
+                ${vac ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[10px]">${vac}</span>` : ''}
+                ${ov ? `<span class="ml-1 text-[11px] text-zinc-400 font-normal">${base}→${meta.display || ov}</span>` : ''}
+              </div>
+              <div class="text-[11px] truncate mt-0.5">${detailLine}</div>
             </div>
           </div>
           <span class="text-[11px] text-sky-400 shrink-0">이동</span>
         `;
         item.addEventListener('click', () => {
-          const [y, m] = dateStr.split('-').map(Number);
           state.year = y;
           state.month = m;
           switchTab('calendar');
@@ -2222,6 +2265,10 @@
     });
     document.getElementById('btn-menu').addEventListener('click', () => switchTab('teams'));
     document.getElementById('btn-open-stats').addEventListener('click', openStatsModal);
+    document.getElementById('btn-toggle-past-logs').addEventListener('click', () => {
+      showPastLogs = !showPastLogs;
+      renderLogView();
+    });
     document.getElementById('btn-fab-sync').addEventListener('click', () => pushToGoogleSheets(true));
 
     // Share / Partner Viewer modal
