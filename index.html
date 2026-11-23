@@ -462,10 +462,14 @@
             <button id="btn-save-gas-url" class="px-3 py-2 rounded-lg bg-[#0a84ff] text-xs font-bold text-white hover:bg-sky-500 shrink-0">연결</button>
           </div>
           <div class="flex gap-2 pt-1">
-            <input id="input-owner-key" type="password" placeholder="관리자 비밀번호 (메모 비공개 보호용)" class="flex-1 min-w-0 bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
+            <input id="input-owner-key" type="password" placeholder="관리자 키 (OWNER_KEY)" class="flex-1 min-w-0 bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
             <button id="btn-save-owner-key" class="px-3 py-2 rounded-lg bg-zinc-800 text-xs font-bold text-white hover:bg-zinc-700 shrink-0">저장</button>
           </div>
-          <p class="text-[10px] text-zinc-500">Apps Script의 OWNER_KEY와 같은 비밀번호를 내 폰에만 저장하면, 공유 링크에서는 메모·대근자 데이터가 서버에서부터 아예 전송되지 않습니다.</p>
+          <div class="flex gap-2 pt-1">
+            <input id="input-viewer-key" type="password" placeholder="읽기 전용 공유 키 (VIEWER_KEY)" class="flex-1 min-w-0 bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500" />
+            <button id="btn-save-viewer-key" class="px-3 py-2 rounded-lg bg-zinc-800 text-xs font-bold text-white hover:bg-zinc-700 shrink-0">저장</button>
+          </div>
+          <p class="text-[10px] text-zinc-500">URL과 키는 이 기기에만 저장되며 GitHub 코드에는 포함되지 않습니다. 공유 링크 복사 시 읽기 전용 키가 자동 포함됩니다.</p>
         </div>
 
         <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3.5 space-y-2">
@@ -863,27 +867,25 @@
       month: new Date().getMonth() + 1,
       activeTab: 'calendar',
       anchorDate: '2027-10-24',
-      myTeam: 3, // Default: 3부
+      myTeam: 3,
       tHolidayOff: true,
-      gasUrl: 'https://script.google.com/macros/s/AKfycbyQFqqiQL7zdx0lgJCwZEmmWSwnixrwVBsFpGnbXJVi6USXAp7al8ynDnXY284v-_-X9A/exec',
+      gasUrl: '',
       ownerKey: '',
+      viewerKey: '',
       autoSyncAlarmOnBackup: true,
       unsynced: false,
       lastBackupAt: '',
       overrides: {},
-      vacations: {}, // { 'YYYY-MM-DD': '연차' | '공가' | '기타' }
-      subNotes: {}, // { 'YYYY-MM-DD': '김OO 대근' }
-      events: [],   // [{ id, title, startDate, endDate, color }]
-      dayMemos: {
-        '2027-10-17': [{ id: 'm1', time: '오후 12:30', text: '결혼식', color: '#d97706' }]
-      },
-      monthlyMemos: {},
+      vacations: {},
+      subNotes: {},
+      events: [],
+      dayMemos: {},
       alarms: {
-        D: '06:30',
-        A: '14:00',
-        N: '22:00',
-        T: '07:30',
-        T금: '06:40'
+        D: '06:45',
+        A: '14:50',
+        N: '22:45',
+        T: '07:50',
+        T금: '06:50'
       }
     };
 
@@ -894,17 +896,30 @@
         state = {
           ...state,
           ...parsed,
-          gasUrl: parsed.gasUrl || 'https://script.google.com/macros/s/AKfycbyQFqqiQL7zdx0lgJCwZEmmWSwnixrwVBsFpGnbXJVi6USXAp7al8ynDnXY284v-_-X9A/exec',
           alarms: { ...state.alarms, ...(parsed.alarms || {}) },
           overrides: { ...(parsed.overrides || {}) },
           vacations: { ...(parsed.vacations || {}) },
           subNotes: { ...(parsed.subNotes || {}) },
           events: Array.isArray(parsed.events) ? parsed.events : [],
-          dayMemos: { ...state.dayMemos, ...(parsed.dayMemos || {}) },
-          monthlyMemos: { ...(parsed.monthlyMemos || {}) }
+          dayMemos: { ...(parsed.dayMemos || {}) }
         };
       }
     } catch (e) {}
+
+    // Bootstrap read-only viewer credentials from shared link (?mode=viewer&g=SCRIPT_ID&v=VIEWER_KEY)
+    if (isUrlLockedViewer) {
+      const gId = urlParams.get('g');
+      const vKey = urlParams.get('v');
+      if (gId && /^[A-Za-z0-9_-]{20,}$/.test(gId)) {
+        state.gasUrl = `https://script.google.com/macros/s/${gId}/exec`;
+      }
+      if (vKey) state.viewerKey = vKey;
+      state.ownerKey = ''; // viewer mode never holds owner key
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        if (gId || vKey) window.history.replaceState({}, '', window.location.pathname + '?mode=viewer');
+      } catch (e) {}
+    }
 
     function updateBackupDot() {
       const dot = document.getElementById('fab-unsynced-dot');
@@ -934,17 +949,22 @@
       const badge = document.getElementById('sync-status-badge');
       if (badge) badge.textContent = '동기화 중...';
       try {
-        const keyParam = (!isViewerMode && state.ownerKey) ? '&key=' + encodeURIComponent(state.ownerKey) : '';
-        const res = await fetch(state.gasUrl + '?action=get' + keyParam, { redirect: 'follow' });
+        const authParam = isViewerMode
+          ? (state.viewerKey ? '&v=' + encodeURIComponent(state.viewerKey) : '')
+          : (state.ownerKey ? '&key=' + encodeURIComponent(state.ownerKey) : '');
+        const res = await fetch(state.gasUrl + '?action=get' + authParam, { redirect: 'follow' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
+        if (data && data.error === 'unauthorized') {
+          if (badge) badge.textContent = '인증 키 필요';
+          return;
+        }
         if (data && typeof data === 'object') {
           if (data.overrides) state.overrides = data.overrides;
           if (data.vacations) state.vacations = data.vacations;
           if (data.subNotes) state.subNotes = data.subNotes;
           if (Array.isArray(data.events)) state.events = data.events;
           if (data.dayMemos) state.dayMemos = data.dayMemos;
-          if (data.monthlyMemos) state.monthlyMemos = data.monthlyMemos;
           if (data.alarms) state.alarms = { ...state.alarms, ...data.alarms };
           saveState(true);
           renderCalendar();
@@ -978,7 +998,6 @@
         subNotes: state.subNotes,
         events: state.events,
         dayMemos: state.dayMemos,
-        monthlyMemos: state.monthlyMemos,
         alarms: state.alarms
       });
 
@@ -1017,7 +1036,19 @@
     let selectedEventColor = '#ec4899';
     let selectedAmPm = 'none';
     let selectedEventAmPm = 'none';
+    let editingMemoIdx = null;
+    let editingEventId = null;
     let modalDayTab = 'memo'; // 'memo' | 'shift'
+
+    function applyTimeStrToWheels(timeStr, ampmSetter, hId, mId) {
+      const m = String(timeStr || '').match(/(오전|오후)\s*(\d{1,2}):(\d{2})/);
+      if (!m) { ampmSetter('none'); return; }
+      ampmSetter(m[1]);
+      document.getElementById(hId).value = String(Number(m[2]));
+      const minSel = document.getElementById(mId);
+      const mm = pad2(Math.round(Number(m[3]) / 5) * 5 % 60);
+      minSel.value = mm;
+    }
     const EVENT_COLORS = ['#ec4899', '#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b'];
     let jumpYear = state.year;
 
@@ -1237,7 +1268,7 @@
       document.getElementById('btn-month-title').textContent = `${state.year}. ${pad2(state.month)}`;
 
       const grid = document.getElementById('calendar-grid');
-      grid.innerHTML = '';
+      const frag = document.createDocumentFragment();
 
       const firstDayOfMonth = new Date(state.year, state.month - 1, 1);
       const startDow = firstDayOfMonth.getDay();
@@ -1309,8 +1340,9 @@
           ${firstMemo ? `<div class="memo-chip" style="background:${firstMemo.color || '#d97706'}">${escapeHtml(firstMemo.text)}${extraMemoCount ? ' +' + extraMemoCount : ''}</div>` : ''}
         `;
         cell.addEventListener('click', () => openDayModal(dateStr));
-        grid.appendChild(cell);
+        frag.appendChild(cell);
       }
+      grid.replaceChildren(frag);
 
       // Violation summary banner
       const vBanner = document.getElementById('violation-banner');
@@ -1375,13 +1407,32 @@
             </div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
-            ${(!isViewerMode && ev.time) ? `<button data-ev-rem="${ev.id}" title="1시간 전 미리알림 등록" class="px-2 py-1 rounded-md bg-black/30 text-[10px] font-bold text-pink-200 hover:bg-black/50">🔔</button>` : ''}
+            ${(!isViewerMode && ev.time) ? `<button data-ev-rem="${ev.id}" title="1시간 전 미리알림 등록" class="px-1.5 py-1 rounded-md bg-black/30 text-[10px] font-bold text-pink-200 hover:bg-black/50">🔔</button>` : ''}
+            ${!isViewerMode ? `<button data-ev-edit="${ev.id}" class="text-[11px] text-sky-300 hover:text-sky-200 font-semibold">수정</button>` : ''}
             ${!isViewerMode ? `<button data-ev-del="${ev.id}" class="text-[11px] text-zinc-400 hover:text-rose-400">삭제</button>` : ''}
           </div>
         `;
         const remBtn = card.querySelector('[data-ev-rem]');
         if (remBtn) {
           remBtn.addEventListener('click', () => triggerReminderShortcut(ev.startDate, ev.time, ev.title));
+        }
+        const editBtn = card.querySelector('[data-ev-edit]');
+        if (editBtn) {
+          editBtn.addEventListener('click', () => {
+            editingEventId = ev.id;
+            editingMemoIdx = null;
+            document.getElementById('new-memo-form').classList.add('hidden');
+            document.getElementById('new-event-form').classList.remove('hidden');
+            document.getElementById('input-event-title').value = ev.title || '';
+            document.getElementById('input-event-start').value = ev.startDate || dateStr;
+            document.getElementById('input-event-end').value = ev.endDate || ev.startDate || dateStr;
+            selectedEventColor = ev.color || '#ec4899';
+            renderEventColorPicker();
+            applyTimeStrToWheels(ev.time, setEventAmPm, 'select-event-hour', 'select-event-min');
+            document.getElementById('chk-event-remind').checked = false;
+            document.getElementById('btn-save-event').textContent = '수정';
+            document.getElementById('input-event-title').focus();
+          });
         }
         const delBtn = card.querySelector('[data-ev-del]');
         if (delBtn) {
@@ -1419,12 +1470,28 @@
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             ${(!isViewerMode && m.time) ? `<button data-rem-idx="${idx}" title="1시간 전 미리알림" class="p-1.5 rounded-lg bg-black/20 text-white hover:bg-black/35 text-xs">🔔</button>` : ''}
-            ${!isViewerMode ? `<button data-del-idx="${idx}" aria-label="메모 삭제" class="p-1.5 rounded-lg bg-black/20 text-white/90 hover:bg-black/35 text-xs font-bold">삭제</button>` : ''}
+            ${!isViewerMode ? `<button data-edit-idx="${idx}" aria-label="메모 수정" class="px-2 py-1.5 rounded-lg bg-black/25 text-white hover:bg-black/40 text-xs font-bold">수정</button>` : ''}
+            ${!isViewerMode ? `<button data-del-idx="${idx}" aria-label="메모 삭제" class="px-2 py-1.5 rounded-lg bg-black/20 text-white/90 hover:bg-black/35 text-xs font-bold">삭제</button>` : ''}
           </div>
         `;
         const remBtn = card.querySelector('[data-rem-idx]');
         if (remBtn) {
           remBtn.addEventListener('click', () => triggerReminderShortcut(dateStr, m.time, m.text));
+        }
+        const editBtn = card.querySelector('[data-edit-idx]');
+        if (editBtn) {
+          editBtn.addEventListener('click', () => {
+            editingMemoIdx = idx;
+            editingEventId = null;
+            document.getElementById('new-event-form').classList.add('hidden');
+            document.getElementById('new-memo-form').classList.remove('hidden');
+            document.getElementById('input-day-memo').value = m.text || '';
+            selectedMemoColor = m.color || '#d97706';
+            renderMemoColorPicker();
+            applyTimeStrToWheels(m.time, setAmPm, 'select-memo-hour', 'select-memo-min');
+            document.getElementById('btn-save-memo').textContent = '수정';
+            document.getElementById('input-day-memo').focus();
+          });
         }
         const delBtn = card.querySelector('[data-del-idx]');
         if (delBtn) {
@@ -1497,6 +1564,10 @@
       renderDayEventCards(dateStr);
       renderDayMemoCards(dateStr);
       document.getElementById('day-memo-add-section').classList.toggle('hidden', isViewerMode);
+      editingMemoIdx = null;
+      editingEventId = null;
+      document.getElementById('btn-save-memo').textContent = '추가';
+      document.getElementById('btn-save-event').textContent = '등록';
       if (!keepTab) {
         document.getElementById('new-memo-form').classList.add('hidden');
         document.getElementById('new-event-form').classList.add('hidden');
@@ -1805,6 +1876,8 @@
       if (gasInput) gasInput.value = state.gasUrl || '';
       const keyInput = document.getElementById('input-owner-key');
       if (keyInput) keyInput.value = state.ownerKey || '';
+      const vKeyInput = document.getElementById('input-viewer-key');
+      if (vKeyInput) vKeyInput.value = state.viewerKey || '';
       const syncBadge = document.getElementById('sync-status-badge');
       if (syncBadge) syncBadge.textContent = state.gasUrl ? '구글 시트 연결됨' : '로컬 저장';
 
@@ -2106,10 +2179,18 @@
     document.getElementById('btn-fab-sync').addEventListener('click', () => pushToGoogleSheets(true));
 
     // Share / Partner Viewer modal
+    function buildSecureShareUrl() {
+      const base = (window.location.protocol === 'https:' && !window.location.hostname.includes('usercontent'))
+        ? (window.location.origin + window.location.pathname)
+        : 'https://내아이디.github.io/저장소명/';
+      const params = new URLSearchParams({ mode: 'viewer' });
+      const m = String(state.gasUrl || '').match(/\/macros\/s\/([^/]+)\/exec/);
+      if (m) params.set('g', m[1]);
+      if (state.viewerKey) params.set('v', state.viewerKey);
+      return `${base}?${params.toString()}`;
+    }
     document.getElementById('btn-open-share').addEventListener('click', () => {
-      if (window.location.protocol === 'https:' && !window.location.hostname.includes('usercontent')) {
-        document.getElementById('share-url-preview').textContent = window.location.origin + window.location.pathname + '?mode=viewer';
-      }
+      document.getElementById('share-url-preview').textContent = buildSecureShareUrl();
       document.getElementById('modal-share').classList.add('open');
     });
     document.getElementById('btn-close-share').addEventListener('click', () => {
@@ -2251,12 +2332,23 @@
       btn.addEventListener('click', () => setEventAmPm(btn.dataset.evAmpm));
     });
     document.getElementById('btn-toggle-new-memo').addEventListener('click', () => {
+      editingMemoIdx = null;
+      document.getElementById('btn-save-memo').textContent = '추가';
+      document.getElementById('input-day-memo').value = '';
+      setAmPm('none');
       document.getElementById('new-event-form').classList.add('hidden');
       const f = document.getElementById('new-memo-form');
       f.classList.toggle('hidden');
       if (!f.classList.contains('hidden')) document.getElementById('input-day-memo').focus();
     });
     document.getElementById('btn-toggle-new-event').addEventListener('click', () => {
+      editingEventId = null;
+      document.getElementById('btn-save-event').textContent = '등록';
+      document.getElementById('input-event-title').value = '';
+      document.getElementById('input-event-start').value = selectedDateStr || TODAY_STR;
+      document.getElementById('input-event-end').value = selectedDateStr || TODAY_STR;
+      setEventAmPm('none');
+      document.getElementById('chk-event-remind').checked = true;
       document.getElementById('new-memo-form').classList.add('hidden');
       const f = document.getElementById('new-event-form');
       f.classList.toggle('hidden');
@@ -2279,7 +2371,17 @@
       }
       const shouldRemind = evTime && document.getElementById('chk-event-remind').checked;
       state.events = state.events || [];
-      state.events.push({ id: 'ev_' + Date.now(), title, startDate: sDate, endDate: eDate, time: evTime, color: selectedEventColor });
+      const wasEdit = Boolean(editingEventId);
+      if (editingEventId) {
+        const idx = state.events.findIndex(x => x.id === editingEventId);
+        if (idx >= 0) {
+          state.events[idx] = { ...state.events[idx], title, startDate: sDate, endDate: eDate, time: evTime, color: selectedEventColor };
+        }
+        editingEventId = null;
+        document.getElementById('btn-save-event').textContent = '등록';
+      } else {
+        state.events.push({ id: 'ev_' + Date.now(), title, startDate: sDate, endDate: eDate, time: evTime, color: selectedEventColor });
+      }
       saveState();
       renderCalendar();
       document.getElementById('input-event-title').value = '';
@@ -2290,7 +2392,7 @@
       if (shouldRemind) {
         triggerReminderShortcut(sDate, evTime, title);
       } else {
-        showToast('기간 일정이 등록되었습니다');
+        showToast(wasEdit ? '일정이 수정되었습니다' : '기간 일정이 등록되었습니다');
       }
     });
     document.getElementById('btn-clear-sub-inline').addEventListener('click', () => {
@@ -2317,7 +2419,13 @@
       state.ownerKey = val;
       saveState(true);
       pullFromGoogleSheets();
-      showToast(val ? '관리자 비밀번호가 이 기기에 저장되었습니다' : '관리자 비밀번호가 해제되었습니다');
+      showToast(val ? '관리자 키가 이 기기에 저장되었습니다' : '관리자 키가 해제되었습니다');
+    });
+    document.getElementById('btn-save-viewer-key').addEventListener('click', () => {
+      const val = document.getElementById('input-viewer-key').value.trim();
+      state.viewerKey = val;
+      saveState(true);
+      showToast(val ? '읽기 전용 키가 저장되었습니다' : '읽기 전용 키가 해제되었습니다');
     });
 
     document.getElementById('btn-save-gas-url').addEventListener('click', () => {
@@ -2348,7 +2456,14 @@
         timeStr = `${selectedAmPm} ${h}:${m}`;
       }
       const list = getDayMemoList(selectedDateStr);
-      list.push({ id: String(Date.now()), time: timeStr, text: txt, color: selectedMemoColor });
+      const wasEdit = (editingMemoIdx !== null && list[editingMemoIdx]);
+      if (wasEdit) {
+        list[editingMemoIdx] = { ...list[editingMemoIdx], time: timeStr, text: txt, color: selectedMemoColor };
+        editingMemoIdx = null;
+        document.getElementById('btn-save-memo').textContent = '추가';
+      } else {
+        list.push({ id: String(Date.now()), time: timeStr, text: txt, color: selectedMemoColor });
+      }
       state.dayMemos[selectedDateStr] = list;
       saveState();
       renderCalendar();
@@ -2356,7 +2471,7 @@
       setAmPm('none');
       document.getElementById('new-memo-form').classList.add('hidden');
       renderDayMemoCards(selectedDateStr);
-      showToast('메모가 추가되었습니다');
+      showToast(wasEdit ? '메모가 수정되었습니다' : '메모가 추가되었습니다');
     });
 
     ['modal-day', 'modal-stats', 'modal-month-jump', 'modal-share'].forEach(id => {
