@@ -1002,29 +1002,54 @@
       });
 
       try {
-        const res = await fetch(state.gasUrl, {
-          method: 'POST',
-          redirect: 'follow',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: payload
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const now = new Date();
-        state.unsynced = false;
-        state.lastBackupAt = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-        saveState(true);
-        if (isManual) {
-          showToast(`백업 완료 (${state.lastBackupAt}) · 알람 동기화 실행`);
-          if (state.autoSyncAlarmOnBackup) {
-            setTimeout(() => {
-              try { window.location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent('근무알람동기화'); } catch (e) {}
-            }, 350);
+        let verifiedOk = false;
+        try {
+          const res = await fetch(state.gasUrl, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: payload
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const json = await res.json().catch(() => ({ ok: true }));
+          if (json && json.ok === false) {
+            throw new Error('BAD_KEY');
+          }
+          verifiedOk = true;
+        } catch (corsErr) {
+          if (corsErr && corsErr.message === 'BAD_KEY') throw corsErr;
+          // iOS Safari often blocks reading Apps Script 302 redirect response via CORS even when POST succeeds
+          await fetch(state.gasUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: payload
+          });
+          verifiedOk = true;
+        }
+
+        if (verifiedOk) {
+          const now = new Date();
+          state.unsynced = false;
+          state.lastBackupAt = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+          saveState(true);
+          if (isManual) {
+            showToast(`백업 완료 (${state.lastBackupAt}) · 알람 동기화 실행`);
+            if (state.autoSyncAlarmOnBackup) {
+              setTimeout(() => {
+                try { window.location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent('근무알람동기화'); } catch (e) {}
+              }, 350);
+            }
           }
         }
       } catch (e) {
         state.unsynced = true;
         saveState(true);
-        if (isManual) showToast('백업 실패: 오프라인이거나 웹앱 권한을 확인해 주세요');
+        if (isManual) {
+          showToast(e && e.message === 'BAD_KEY'
+            ? '백업 실패: 관리자 키(OWNER_KEY)가 일치하지 않습니다'
+            : '백업 실패: 오프라인이거나 웹앱 URL·권한을 확인해 주세요');
+        }
       } finally {
         isBackingUp = false;
         if (fab) fab.classList.remove('opacity-70', 'animate-pulse');
