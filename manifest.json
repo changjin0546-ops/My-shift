@@ -1,0 +1,11 @@
+{
+  "name": "교대근무 캘린더",
+  "short_name": "교대달력",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
