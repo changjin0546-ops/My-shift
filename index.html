@@ -10,10 +10,287 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="교대달력" />
   <meta name="theme-color" content="#000000" />
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json" />
   <style>
+    /* Self-contained offline CSS (zero CDN dependencies) */
+    button,input,select,textarea{font-family:inherit;color:inherit;background:transparent;border:0;margin:0;padding:0}
+    button{cursor:pointer}svg{display:block}
+    @keyframes twPulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .-mt-1{margin-top:-0.25rem}
+    .absolute{position:absolute}
+    .accent-pink-500{accent-color:#ec4899}
+    .active\:bg-zinc-800:active{background-color:#27272a}
+    .active\:scale-95:active{transform:scale(0.95)}
+    .active\:scale-\[0\.99\]:active{transform:scale(0.99)}
+    .animate-pulse{animation:twPulse 1.5s cubic-bezier(0.4,0,0.6,1) infinite}
+    .backdrop-blur{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    .bg-\[\#0a84ff\]{background-color:#0a84ff}
+    .bg-\[\#0a84ff\]\/20{background-color:rgba(10,132,255,0.2)}
+    .bg-amber-400{background-color:#fbbf24}
+    .bg-amber-500\/25{background-color:rgba(245,158,11,0.25)}
+    .bg-black{background-color:#000000}
+    .bg-black\/20{background-color:rgba(0,0,0,0.2)}
+    .bg-black\/25{background-color:rgba(0,0,0,0.25)}
+    .bg-black\/30{background-color:rgba(0,0,0,0.3)}
+    .bg-black\/95{background-color:rgba(0,0,0,0.95)}
+    .bg-emerald-950{background-color:#022c22}
+    .bg-pink-600{background-color:#db2777}
+    .bg-pink-950{background-color:#500724}
+    .bg-red-950\/90{background-color:rgba(69,10,10,0.9)}
+    .bg-rose-500\/20{background-color:rgba(244,63,94,0.2)}
+    .bg-rose-950\/60{background-color:rgba(76,5,25,0.6)}
+    .bg-sky-500\/20{background-color:rgba(14,165,233,0.2)}
+    .bg-sky-500\/25{background-color:rgba(14,165,233,0.25)}
+    .bg-sky-950\/30{background-color:rgba(8,47,73,0.3)}
+    .bg-sky-950\/50{background-color:rgba(8,47,73,0.5)}
+    .bg-slate-700{background-color:#334155}
+    .bg-slate-900\/70{background-color:rgba(15,23,42,0.7)}
+    .bg-white{background-color:#ffffff}
+    .bg-white\/25{background-color:rgba(255,255,255,0.25)}
+    .bg-zinc-700{background-color:#3f3f46}
+    .bg-zinc-800{background-color:#27272a}
+    .bg-zinc-900{background-color:#18181b}
+    .bg-zinc-900\/80{background-color:rgba(24,24,27,0.8)}
+    .bg-zinc-900\/90{background-color:rgba(24,24,27,0.9)}
+    .bg-zinc-950{background-color:#09090b}
+    .block{display:block}
+    .border{border-width:1px;border-style:solid}
+    .border-2{border-width:2px;border-style:solid}
+    .border-\[\#0a84ff\]{border-color:#0a84ff}
+    .border-\[\#0a84ff\]\/70{border-color:rgba(10,132,255,0.7)}
+    .border-amber-400\/60{border-color:rgba(251,191,36,0.6)}
+    .border-b{border-bottom-width:1px;border-bottom-style:solid}
+    .border-b-2{border-bottom-width:2px;border-bottom-style:solid}
+    .border-black{border-color:#000000}
+    .border-dashed{border-style:dashed}
+    .border-emerald-400{border-color:#34d399}
+    .border-emerald-600\/70{border-color:rgba(5,150,105,0.7)}
+    .border-pink-800{border-color:#9d174d}
+    .border-pink-900\/50{border-color:rgba(131,24,67,0.5)}
+    .border-red-600\/80{border-color:rgba(220,38,38,0.8)}
+    .border-red-800\/80{border-color:rgba(153,27,27,0.8)}
+    .border-rose-500\/40{border-color:rgba(244,63,94,0.4)}
+    .border-rose-900\/60{border-color:rgba(136,19,55,0.6)}
+    .border-slate-700\/60{border-color:rgba(51,65,85,0.6)}
+    .border-t{border-top-width:1px;border-top-style:solid}
+    .border-transparent{border-color:transparent}
+    .border-white{border-color:#ffffff}
+    .border-white\/50{border-color:rgba(255,255,255,0.5)}
+    .border-zinc-300{border-color:#d4d4d8}
+    .border-zinc-700{border-color:#3f3f46}
+    .border-zinc-700\/80{border-color:rgba(63,63,70,0.8)}
+    .border-zinc-800{border-color:#27272a}
+    .border-zinc-800\/80{border-color:rgba(39,39,42,0.8)}
+    .border-zinc-800\/90{border-color:rgba(39,39,42,0.9)}
+    .border-zinc-900{border-color:#18181b}
+    .break-all{word-break:break-all}
+    .break-words{overflow-wrap:break-word}
+    .cursor-pointer{cursor:pointer}
+    .fixed{position:fixed}
+    .flex{display:flex}
+    .flex-1{flex:1 1 0%}
+    .flex-col{flex-direction:column}
+    .flex-wrap{flex-wrap:wrap}
+    .focus\:border-pink-500:focus{border-color:#ec4899}
+    .focus\:border-sky-500:focus{border-color:#0ea5e9}
+    .focus\:border-slate-400:focus{border-color:#94a3b8}
+    .focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}
+    .font-black{font-weight:900}
+    .font-bold{font-weight:700}
+    .font-extrabold{font-weight:800}
+    .font-medium{font-weight:500}
+    .font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .font-normal{font-weight:400}
+    .font-semibold{font-weight:600}
+    .gap-0\.5{gap:0.125rem}
+    .gap-1{gap:0.25rem}
+    .gap-1\.5{gap:0.375rem}
+    .gap-2{gap:0.5rem}
+    .gap-2\.5{gap:0.625rem}
+    .gap-3{gap:0.75rem}
+    .gap-4{gap:1rem}
+    .gap-5{gap:1.25rem}
+    .gap-y-0\.5{row-gap:0.125rem}
+    .grid{display:grid}
+    .grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+    .grid-cols-6{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}
+    .h-1{height:0.25rem}
+    .h-11{height:2.75rem}
+    .h-2\.5{height:0.625rem}
+    .h-3{height:0.75rem}
+    .h-3\.5{height:0.875rem}
+    .h-5{height:1.25rem}
+    .h-6{height:1.5rem}
+    .h-7{height:1.75rem}
+    .h-8{height:2rem}
+    .h-\[310px\]{height:310px}
+    .hidden{display:none}
+    .hover\:bg-black\/35:hover{background-color:rgba(0,0,0,0.35)}
+    .hover\:bg-black\/40:hover{background-color:rgba(0,0,0,0.4)}
+    .hover\:bg-black\/50:hover{background-color:rgba(0,0,0,0.5)}
+    .hover\:bg-pink-500:hover{background-color:#ec4899}
+    .hover\:bg-rose-950:hover{background-color:#4c0519}
+    .hover\:bg-sky-500:hover{background-color:#0ea5e9}
+    .hover\:bg-slate-600:hover{background-color:#475569}
+    .hover\:bg-zinc-600:hover{background-color:#52525b}
+    .hover\:bg-zinc-700:hover{background-color:#3f3f46}
+    .hover\:bg-zinc-800:hover{background-color:#27272a}
+    .hover\:bg-zinc-900:hover{background-color:#18181b}
+    .hover\:border-sky-500:hover{border-color:#0ea5e9}
+    .hover\:text-pink-200:hover{color:#fbcfe8}
+    .hover\:text-rose-400:hover{color:#fb7185}
+    .hover\:text-sky-200:hover{color:#bae6fd}
+    .hover\:text-sky-400:hover{color:#38bdf8}
+    .hover\:text-white:hover{color:#ffffff}
+    .hover\:text-zinc-200:hover{color:#e4e4e7}
+    .hover\:text-zinc-300:hover{color:#d4d4d8}
+    .hover\:underline:hover{text-decoration-line:underline}
+    .inline-flex{display:inline-flex}
+    .items-baseline{align-items:baseline}
+    .items-center{align-items:center}
+    .items-start{align-items:flex-start}
+    .justify-between{justify-content:space-between}
+    .justify-center{justify-content:center}
+    .leading-none{line-height:1}
+    .leading-relaxed{line-height:1.625}
+    .leading-snug{line-height:1.375}
+    .max-w-\[36px\]{max-width:36px}
+    .max-w-full{max-width:100%}
+    .mb-1\.5{margin-bottom:0.375rem}
+    .mb-2{margin-bottom:0.5rem}
+    .min-h-0{min-height:0}
+    .min-w-0{min-width:0}
+    .ml-0\.5{margin-left:0.125rem}
+    .ml-1{margin-left:0.25rem}
+    .mt-0\.5{margin-top:0.125rem}
+    .mt-1\.5{margin-top:0.375rem}
+    .mx-auto{margin-left:auto;margin-right:auto}
+    .opacity-55{opacity:0.55}
+    .opacity-60{opacity:0.6}
+    .opacity-65{opacity:0.65}
+    .opacity-70{opacity:0.7}
+    .overflow-hidden{overflow:hidden}
+    .overflow-x-auto{overflow-x:auto}
+    .overflow-y-auto{overflow-y:auto}
+    .p-0\.5{padding:0.125rem}
+    .p-1{padding:0.25rem}
+    .p-1\.5{padding:0.375rem}
+    .p-2\.5{padding:0.625rem}
+    .p-3{padding:0.75rem}
+    .p-3\.5{padding:0.875rem}
+    .p-4{padding:1rem}
+    .pb-2{padding-bottom:0.5rem}
+    .placeholder-zinc-500::placeholder{color:#71717a}
+    .pr-0\.5{padding-right:0.125rem}
+    .pt-0\.5{padding-top:0.125rem}
+    .pt-1{padding-top:0.25rem}
+    .pt-2{padding-top:0.5rem}
+    .pt-3{padding-top:0.75rem}
+    .px-0\.5{padding-left:0.125rem;padding-right:0.125rem}
+    .px-1\.5{padding-left:0.375rem;padding-right:0.375rem}
+    .px-2{padding-left:0.5rem;padding-right:0.5rem}
+    .px-2\.5{padding-left:0.625rem;padding-right:0.625rem}
+    .px-3{padding-left:0.75rem;padding-right:0.75rem}
+    .px-3\.5{padding-left:0.875rem;padding-right:0.875rem}
+    .py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}
+    .py-1{padding-top:0.25rem;padding-bottom:0.25rem}
+    .py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}
+    .py-12{padding-top:3rem;padding-bottom:3rem}
+    .py-2{padding-top:0.5rem;padding-bottom:0.5rem}
+    .py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}
+    .py-7{padding-top:1.75rem;padding-bottom:1.75rem}
+    .py-8{padding-top:2rem;padding-bottom:2rem}
+    .relative{position:relative}
+    .right-0\.5{right:0.125rem}
+    .right-4{right:1rem}
+    .ring-1{box-shadow:0 0 0 1px var(--tw-ring-color,#3b82f6)}
+    .ring-2{box-shadow:0 0 0 2px var(--tw-ring-color,#3b82f6)}
+    .ring-\[\#0a84ff\]{--tw-ring-color:#0a84ff}
+    .ring-emerald-400\/60{--tw-ring-color:rgba(52,211,153,0.6)}
+    .ring-white{--tw-ring-color:#ffffff}
+    .rounded{border-radius:0.25rem}
+    .rounded-2xl{border-radius:1rem}
+    .rounded-full{border-radius:9999px}
+    .rounded-lg{border-radius:0.5rem}
+    .rounded-md{border-radius:0.375rem}
+    .rounded-xl{border-radius:0.75rem}
+    .scale-110{transform:scale(1.1)}
+    .select-none{user-select:none}
+    .shadow-lg{box-shadow:0 10px 15px -3px rgba(0,0,0,0.25),0 4px 6px -4px rgba(0,0,0,0.2)}
+    .shadow-sky-950\/60{box-shadow:0 10px 15px -3px rgba(8,47,73,0.6)}
+    .shrink-0{flex-shrink:0}
+    .space-y-1>:not([hidden])~:not([hidden]){margin-top:0.25rem}
+    .space-y-1\.5>:not([hidden])~:not([hidden]){margin-top:0.375rem}
+    .space-y-2>:not([hidden])~:not([hidden]){margin-top:0.5rem}
+    .space-y-2\.5>:not([hidden])~:not([hidden]){margin-top:0.625rem}
+    .space-y-3>:not([hidden])~:not([hidden]){margin-top:0.75rem}
+    .space-y-3\.5>:not([hidden])~:not([hidden]){margin-top:0.875rem}
+    .space-y-4>:not([hidden])~:not([hidden]){margin-top:1rem}
+    .text-2xl{font-size:1.5rem;line-height:2rem}
+    .text-\[\#0a84ff\]{color:#0a84ff}
+    .text-\[\#3b82f6\]{color:#3b82f6}
+    .text-\[\#e05263\]{color:#e05263}
+    .text-\[10px\]{font-size:10px}
+    .text-\[11px\]{font-size:11px}
+    .text-\[22px\]{font-size:22px}
+    .text-\[9px\]{font-size:9px}
+    .text-amber-200{color:#fde68a}
+    .text-amber-400{color:#fbbf24}
+    .text-base{font-size:1rem;line-height:1.5rem}
+    .text-center{text-align:center}
+    .text-emerald-300{color:#6ee7b7}
+    .text-emerald-400{color:#34d399}
+    .text-lg{font-size:1.125rem;line-height:1.75rem}
+    .text-pink-200{color:#fbcfe8}
+    .text-pink-300{color:#f9a8d4}
+    .text-pink-400{color:#f472b6}
+    .text-red-200{color:#fecaca}
+    .text-red-300{color:#fca5a5}
+    .text-right{text-align:right}
+    .text-rose-300{color:#fda4af}
+    .text-sky-300{color:#7dd3fc}
+    .text-sky-400{color:#38bdf8}
+    .text-slate-200{color:#e2e8f0}
+    .text-slate-400{color:#94a3b8}
+    .text-slate-500{color:#64748b}
+    .text-sm{font-size:0.875rem;line-height:1.25rem}
+    .text-white{color:#ffffff}
+    .text-white\/80{color:rgba(255,255,255,0.8)}
+    .text-white\/85{color:rgba(255,255,255,0.85)}
+    .text-white\/90{color:rgba(255,255,255,0.9)}
+    .text-xl{font-size:1.25rem;line-height:1.75rem}
+    .text-xs{font-size:0.75rem;line-height:1rem}
+    .text-zinc-100{color:#f4f4f5}
+    .text-zinc-200{color:#e4e4e7}
+    .text-zinc-300{color:#d4d4d8}
+    .text-zinc-400{color:#a1a1aa}
+    .text-zinc-500{color:#71717a}
+    .text-zinc-600{color:#52525b}
+    .top-0\.5{top:0.125rem}
+    .tracking-tight{letter-spacing:-0.025em}
+    .transition{transition:all 150ms cubic-bezier(0.4,0,0.2,1)}
+    .transition-colors{transition:color,background-color,border-color 150ms cubic-bezier(0.4,0,0.2,1)}
+    .transition-transform{transition:transform 150ms cubic-bezier(0.4,0,0.2,1)}
+    .translate-x-0\.5{transform:translateX(0.125rem)}
+    .translate-x-5{transform:translateX(1.25rem)}
+    .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .w-10{width:2.5rem}
+    .w-11{width:2.75rem}
+    .w-12{width:3rem}
+    .w-2\.5{width:0.625rem}
+    .w-3{width:0.75rem}
+    .w-3\.5{width:0.875rem}
+    .w-5{width:1.25rem}
+    .w-7{width:1.75rem}
+    .w-8{width:2rem}
+    .w-full{width:100%}
+    .z-20{z-index:20}
+    .z-30{z-index:30}
+    @media (min-width: 640px){.sm\:right-\[calc\(50\%-224px\)\]{right:calc(50%-224px)}}
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
       margin: 0;
@@ -399,7 +676,7 @@
         </div>
 
         <!-- Floating Manual Backup Button (Google Sheets) -->
-        <button id="btn-fab-sync" aria-label="구글 시트 백업 및 알람 동기화" title="구글 시트 백업 + 알람 동기화" style="bottom: calc(env(safe-area-inset-bottom) + 64px);" class="fixed right-4 sm:right-[calc(50%-224px)] z-30 w-11 h-11 rounded-full bg-[#0a84ff] text-white shadow-lg shadow-sky-950/60 flex items-center justify-center active:scale-95 transition-transform">
+        <button id="btn-fab-sync" aria-label="구글 시트 백업 및 알람 동기화" title="구글 시트 백업 + 알람 동기화" style="bottom: calc(env(safe-area-inset-bottom) + 64px);" class="absolute right-4 z-30 w-11 h-11 rounded-full bg-[#0a84ff] text-white shadow-lg shadow-sky-950/60 flex items-center justify-center active:scale-95 transition-transform">
           <svg id="fab-sync-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="12 12 12 17"/><polyline points="9.5 14.5 12 12 14.5 14.5"/></svg>
           <span id="fab-unsynced-dot" class="hidden absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-amber-400 border-2 border-black"></span>
         </button>
@@ -2661,7 +2938,14 @@
     // Initial render & optional cloud pull
     applyViewerModeUI();
     updateBackupDot();
-    if (state.gasUrl) pullFromGoogleSheets();
+    if (state.gasUrl && navigator.onLine !== false) pullFromGoogleSheets();
+
+    // Register Service Worker for true offline (Airplane Mode) PWA support
+    if ('serviceWorker' in navigator && window.location.protocol === 'https:' && !window.location.hostname.includes('usercontent')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>
